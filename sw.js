@@ -1,8 +1,8 @@
 /* Conferência de Bobinas — Service Worker
- * setor-v1: importação por coluna SETOR + network-first.
- * Assets estáticos usam cache com atualização em segundo plano.
+ * v9: cloud report panel +  HTML network-first (atualiza sozinho) + limpa caches antigos.
+ * Publique este arquivo junto com o index.html sempre que mudar o app.
  */
-const CACHE_NAME = "conferencia-bobinas-setor-v1";
+const CACHE_NAME = "conferencia-bobinas-v9";
 
 const PRECACHE_ASSETS = [
   "./",
@@ -51,17 +51,13 @@ function isStaticAsset(url) {
 async function putInCache(request, response) {
   try {
     if (!response || !response.ok) return;
-    // Só cacheia GET same-origin
     if (request.method !== "GET") return;
     const cache = await caches.open(CACHE_NAME);
     await cache.put(request, response.clone());
-  } catch (e) {
-    // ignore quota / opaque errors
-  }
+  } catch (e) {}
 }
 
 self.addEventListener("install", (event) => {
-  // Ativa imediatamente a nova versão
   self.skipWaiting();
   event.waitUntil(
     (async () => {
@@ -71,13 +67,9 @@ self.addEventListener("install", (event) => {
           const res = await fetch(asset, { cache: "no-store" });
           if (res && res.ok) {
             await cache.put(asset, res.clone());
-            // Também guarda index como navegação raiz
             if (asset === "./index.html") {
               try { await cache.put("./", res.clone()); } catch (e) {}
             }
-            console.log("[SW] Cacheado:", asset);
-          } else {
-            console.warn("[SW] Resposta inválida ao cachear:", asset, res && res.status);
           }
         } catch (err) {
           console.warn("[SW] Falhou ao cachear:", asset, err);
@@ -94,13 +86,9 @@ self.addEventListener("activate", (event) => {
       await Promise.all(
         keys
           .filter((key) => key !== CACHE_NAME)
-          .map((key) => {
-            console.log("[SW] Removendo cache antigo:", key);
-            return caches.delete(key);
-          })
+          .map((key) => caches.delete(key))
       );
       await self.clients.claim();
-      // Avisa abas abertas que o SW novo assumiu
       const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
       for (const client of clients) {
         client.postMessage({ type: "SW_ACTIVATED", cache: CACHE_NAME });
@@ -109,12 +97,9 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// Permite a página pedir skipWaiting se necessário
 self.addEventListener("message", (event) => {
   const data = event.data || {};
-  if (data && data.type === "SKIP_WAITING") {
-    self.skipWaiting();
-  }
+  if (data && data.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("fetch", (event) => {
@@ -122,11 +107,9 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
 
   const url = new URL(request.url);
-
-  // Deixa Firebase / Supabase / CDNs irem direto na rede (sem cache do SW)
   if (!sameOrigin(url.href)) return;
 
-  // HTML / navegação: NETWORK FIRST (atualiza o app sozinho)
+  // HTML: sempre tenta rede primeiro
   if (isHtmlRequest(request, url)) {
     event.respondWith(
       (async () => {
@@ -134,7 +117,6 @@ self.addEventListener("fetch", (event) => {
           const fresh = await fetch(request, { cache: "no-store" });
           if (fresh && fresh.ok) {
             await putInCache(request, fresh);
-            // Mantém cópia canônica do index
             try {
               const cache = await caches.open(CACHE_NAME);
               await cache.put("./index.html", fresh.clone());
@@ -155,7 +137,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Assets estáticos same-origin: stale-while-revalidate
+  // Assets: cache com atualização em segundo plano
   if (isStaticAsset(url)) {
     event.respondWith(
       (async () => {
@@ -169,22 +151,17 @@ self.addEventListener("fetch", (event) => {
           .catch(() => null);
 
         if (cached) {
-          // Atualiza em segundo plano
           event.waitUntil(networkPromise);
           return cached;
         }
-
         const fresh = await networkPromise;
         if (fresh) return fresh;
-
-        // Fallback genérico
         return caches.match(request);
       })()
     );
     return;
   }
 
-  // Demais GETs same-origin: rede com fallback de cache
   event.respondWith(
     (async () => {
       try {
