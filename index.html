@@ -906,7 +906,7 @@
               </div>
             </div>
             <div class="report-mode-switch" aria-label="Alternar visualização da conferência">
-              <button type="button" id="cloudReportModeOps" onclick="setCloudReportPanelMode('ops')">📦 OP's</button>
+              <button type="button" id="cloudReportModeOps" class="active" onclick="setCloudReportPanelMode('ops')">📦 OP's</button>
               <button type="button" id="cloudReportModeDetail" onclick="setCloudReportPanelMode('detail')">📋 Lista</button>
             </div>
             <div class="search-wrap report-panel-search"><span class="si">🔍</span><input class="search-input" id="cloudReportFullscreenSearch" placeholder="Buscar OP..." oninput="cloudReportPanelSearch(this.value)" /></div>
@@ -918,7 +918,7 @@
             </div>
           </div>
           <div class="report-panel-content">
-            <div class="report-panel-view" id="cloudReportOpsView">
+            <div class="report-panel-view active" id="cloudReportOpsView">
               <div class="report-panel-metrics">
                 <div class="report-mini-stat"><strong id="cloudReportPanelOpsCount">0</strong><span>OP's</span></div>
                 <div class="report-mini-stat"><strong id="cloudReportPanelOpsFound">0</strong><span>Encontradas</span></div>
@@ -2399,7 +2399,9 @@ let cloudLastHeaderWrite = 0;
           cloudDetailConfId = data.id;
           const r = data.resumo || {};
           const opCount = Array.isArray(data.opSummary) ? data.opSummary.length : 0;
-          const pct = (r.percentual != null ? r.percentual : 0) + "%";
+          const pctNum = Number(r.percentual != null ? r.percentual : 0);
+          const pct = (Number.isFinite(pctNum) ? pctNum : 0).toFixed(1) + "%";
+          // UI compacta: NÃO mostra lista/resumo abertos — só cards "Abrir"
           box.innerHTML = `<div class="cloud-detail-head"><div><div class="cloud-detail-title">${esc(data.operador || "-")} • ${esc(cloudFormatSessionMeta(data.id, data.data || ""))}</div><div class="cloud-detail-sub">${esc(data.tipo || "-")}</div></div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
               <button class="cloud-report-btn" onclick="cloudShowExportModal(cloudDetailConfId)">Exportar</button>
@@ -2412,10 +2414,10 @@ let cloudLastHeaderWrite = 0;
             <div class="cloud-detail-stat">Pendentes<strong>${r.pendentes ?? 0}</strong></div>
             <div class="cloud-detail-stat">Não previstas<strong>${r.naoPrevistas ?? 0}</strong></div>
           </div>
-          <div class="prog-wrap" style="margin:10px 0 12px"><div class="prog-head"><span>Conferência Geral</span><span class="pct">${esc(String(pct))}</span></div><div class="prog-bar"><div class="prog-fill" style="width:${esc(String(pct))}"></div></div></div>
+          <div class="prog-wrap" style="margin:10px 0 12px"><div class="prog-head"><span>Conferência Geral</span><span class="pct">${esc(pct)}</span></div><div class="prog-bar"><div class="prog-fill" style="width:${esc(pct)}"></div></div></div>
           ${data.missingBobinas ? `<div style="margin:0 0 10px; padding:10px 12px; border-radius:10px; border:1px solid rgba(245,158,11,.28); background: rgba(245,158,11,.08); color: var(--accent-yellow); font-size:.82em; font-weight:700;">⚠️ Conferência antiga sem base de bobinas.</div>` : ""}
           <div class="card-title" style="margin-top:4px">🔎 Detalhes da conferência</div>
-          <div class="card-sub">Toque em uma opção para abrir em tela cheia com busca, filtros e rolagem própria.</div>
+          <div class="card-sub">Toque em uma opção para abrir em tela cheia. Resumo e lista ficam fechados.</div>
           <div class="report-actions-grid" style="margin-top:10px">
             <button type="button" class="report-action-card" onclick="openCloudReportPanel('ops')">
               <span class="report-action-icon blue">📦</span>
@@ -2425,7 +2427,7 @@ let cloudLastHeaderWrite = 0;
                 <span class="report-action-metrics">
                   <span><strong id="cloudCardOpCount">${opCount}</strong> OP's</span>
                   <span><strong id="cloudCardOpFound">${r.conferidos ?? 0}</strong>/<strong id="cloudCardOpTotal">${r.total ?? 0}</strong> encontradas</span>
-                  <span><strong id="cloudCardOpPct">${esc(String(pct))}</strong> geral</span>
+                  <span><strong id="cloudCardOpPct">${esc(pct)}</strong> geral</span>
                 </span>
               </span>
               <span class="report-open-pill">Abrir</span>
@@ -2446,11 +2448,8 @@ let cloudLastHeaderWrite = 0;
             </button>
           </div>`;
           updateCloudReportPanelMetrics();
-          // Se o painel fullscreen já estiver aberto, só atualiza o conteúdo
           if (document.getElementById("cloudReportFullscreen")?.classList.contains("show")) {
             setCloudReportPanelMode(cloudReportPanelMode);
-          } else if (!silent) {
-            // mantém fechado, igual ao relatório
           }
           if (!silent) box.scrollIntoView({ behavior: "smooth", block: "start" });
           cloudSetStatus("ok", "☁️ Conferência aberta");
@@ -2484,7 +2483,6 @@ let cloudLastHeaderWrite = 0;
       function cloudRenderDetailOpSummary() {
         const box = document.getElementById("cloudDetailOpSummary");
         if (!box) return;
-        // se o container for o do painel fullscreen, envolve em lista estilizada
         const baseRows = (cloudDetailRows || []).filter((r) => !String(r.status).includes("Não Prevista"));
         const filteredRows = cloudRowsByDetailFilter(true);
         const baseMap = new Map();
@@ -2524,7 +2522,7 @@ let cloudLastHeaderWrite = 0;
           box.innerHTML = '<div class="empty">Nenhuma OP encontrada para este filtro.</div>';
           return;
         }
-        box.innerHTML = '<div class="op-summary-list">' + entries.map((entry) => {
+        box.innerHTML = entries.map((entry) => {
           const base = baseMap.get(entry.op) || { total: entry.count, checked: 0, pending: 0 };
           let label = "Qtd.";
           let value = String(entry.count);
@@ -2542,13 +2540,11 @@ let cloudLastHeaderWrite = 0;
             value = String(entry.extra || entry.count);
           }
           return `<div class="op-summary-item"><div class="op-summary-op">OP ${esc(entry.op || "-")}</div><div class="op-summary-info"><span>${label}: <strong>${value}</strong></span>${extraInfo}</div></div>`;
-        }).join("") + '</div>';
-        if (cloudReportOpSummarySearch) cloudFilterOpSummaryCards(cloudReportOpSummarySearch);
+        }).join("");
       }
       function cloudSetDetailFilter(filter) {
         cloudDetailFilter = filter || "all";
         cloudApplyDetailFilterUI();
-        // botões do painel fullscreen da nuvem
         document.querySelectorAll("#cloudReportDetailFilters .fbtn").forEach((b) => {
           b.classList.toggle("active", (b.getAttribute("data-filter") || "") === cloudDetailFilter);
         });
@@ -2651,7 +2647,8 @@ let cloudLastHeaderWrite = 0;
         cloudReportOpSummarySearch = "";
         cloudDetailConfId = "__merged__";
         const opCount = Array.isArray(cloudMergedReport.opSummary) ? cloudMergedReport.opSummary.length : 0;
-        const pct = (r.percentual != null ? r.percentual : 0) + "%";
+        const pctNum = Number(r.percentual != null ? r.percentual : 0);
+        const pct = (Number.isFinite(pctNum) ? pctNum : 0).toFixed(1) + "%";
         box.className = "cloud-detail show";
         box.innerHTML = `<div class="cloud-detail-head"><div><div class="cloud-detail-title">${esc(cloudMergedReport.title)}</div><div class="cloud-detail-sub">${esc(cloudMergedReport.subtitle || "")}</div></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
@@ -2665,9 +2662,9 @@ let cloudLastHeaderWrite = 0;
           <div class="cloud-detail-stat">Pendentes<strong>${r.pendentes ?? 0}</strong></div>
           <div class="cloud-detail-stat">Não previstas<strong>${r.naoPrevistas ?? 0}</strong></div>
         </div>
-        <div class="prog-wrap" style="margin:10px 0 12px"><div class="prog-head"><span>Conferência Geral</span><span class="pct">${esc(String(pct))}</span></div><div class="prog-bar"><div class="prog-fill" style="width:${esc(String(pct))}"></div></div></div>
+        <div class="prog-wrap" style="margin:10px 0 12px"><div class="prog-head"><span>Conferência Geral</span><span class="pct">${esc(pct)}</span></div><div class="prog-bar"><div class="prog-fill" style="width:${esc(pct)}"></div></div></div>
         <div class="card-title" style="margin-top:4px">🔎 Detalhes do consolidado</div>
-        <div class="card-sub">Toque em uma opção para abrir em tela cheia com busca, filtros e rolagem própria.</div>
+        <div class="card-sub">Toque em uma opção para abrir em tela cheia. Resumo e lista ficam fechados.</div>
         <div class="report-actions-grid" style="margin-top:10px">
           <button type="button" class="report-action-card" onclick="openCloudReportPanel('ops')">
             <span class="report-action-icon blue">📦</span>
@@ -2675,9 +2672,9 @@ let cloudLastHeaderWrite = 0;
               <span class="report-action-title">Resumo por OP's</span>
               <span class="report-action-desc">Visualizar o progresso de cada OP do consolidado.</span>
               <span class="report-action-metrics">
-                <span><strong>${opCount}</strong> OP's</span>
-                <span><strong>${r.conferidos ?? 0}</strong>/<strong>${r.total ?? 0}</strong> encontradas</span>
-                <span><strong>${esc(String(pct))}</strong> geral</span>
+                <span><strong id="cloudCardOpCount">${opCount}</strong> OP's</span>
+                <span><strong id="cloudCardOpFound">${r.conferidos ?? 0}</strong>/<strong id="cloudCardOpTotal">${r.total ?? 0}</strong> encontradas</span>
+                <span><strong id="cloudCardOpPct">${esc(pct)}</strong> geral</span>
               </span>
             </span>
             <span class="report-open-pill">Abrir</span>
@@ -2688,10 +2685,10 @@ let cloudLastHeaderWrite = 0;
               <span class="report-action-title">Lista detalhada</span>
               <span class="report-action-desc">Ver bobina a bobina do consolidado.</span>
               <span class="report-action-metrics">
-                <span><strong>${(cloudMergedReport.rows || []).length}</strong> itens</span>
-                <span><strong>${r.conferidos ?? 0}</strong> conferidas</span>
-                <span><strong>${r.pendentes ?? 0}</strong> pendentes</span>
-                <span><strong>${r.naoPrevistas ?? 0}</strong> extras</span>
+                <span><strong id="cloudCardDetailCount">${(cloudMergedReport.rows || []).length}</strong> itens</span>
+                <span><strong id="cloudCardDetailChecked">${r.conferidos ?? 0}</strong> conferidas</span>
+                <span><strong id="cloudCardDetailPending">${r.pendentes ?? 0}</strong> pendentes</span>
+                <span><strong id="cloudCardDetailExtra">${r.naoPrevistas ?? 0}</strong> extras</span>
               </span>
             </span>
             <span class="report-open-pill">Abrir</span>
@@ -3735,11 +3732,12 @@ if (S.collectorMode) {
 
       function updateCloudReportPanelMetrics() {
         const rows = cloudDetailRows || [];
-        const total = rows.filter((r) => !String(r.status || "").includes("Não Prevista")).length;
-        const checked = rows.filter((r) => String(r.status || "").includes("Conferid") || String(r.status || "").includes("Manual")).length;
+        const base = rows.filter((r) => !String(r.status || "").includes("Não Prevista"));
+        const total = base.length;
+        const checked = rows.filter((r) => /Conferid|Manual/i.test(String(r.status || ""))).length;
         const pending = rows.filter((r) => String(r.status || "").includes("Pendente")).length;
         const extras = rows.filter((r) => String(r.status || "").includes("Não Prevista")).length;
-        const ops = new Set(rows.filter((r) => !String(r.status || "").includes("Não Prevista")).map((r) => r.op || "-"));
+        const ops = new Set(base.map((r) => r.op || "-"));
         const pct = total > 0 ? ((checked / total) * 100).toFixed(1) + "%" : "0.0%";
         const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
         set("cloudReportPanelOpsCount", ops.size);
@@ -3755,20 +3753,17 @@ if (S.collectorMode) {
         set("cloudCardDetailPending", pending);
         set("cloudCardDetailExtra", extras);
         const detailCount = document.getElementById("cloudReportDetailResultCount");
-        if (detailCount) {
-          const filtered = typeof cloudRowsByDetailFilter === "function" ? cloudRowsByDetailFilter(true) : rows;
+        if (detailCount && typeof cloudRowsByDetailFilter === "function") {
+          const filtered = cloudRowsByDetailFilter(true);
           detailCount.textContent = `${filtered.length} ${filtered.length === 1 ? "item" : "itens"}`;
         }
       }
       function openCloudReportPanel(mode) {
-        if (!cloudDetailConfId || !(cloudDetailRows || []).length) {
-          notify("Abra uma conferência primeiro.", "warning");
-          return;
-        }
-        const panel = document.getElementById("cloudReportFullscreen");
-        if (!panel) return;
-        // fecha painel local do relatório se estiver aberto
+        if (!cloudDetailConfId) { notify("Abra uma conferência primeiro.", "warning"); return; }
+        if (!(cloudDetailRows || []).length) { notify("Esta conferência não tem itens para exibir.", "warning"); return; }
         try { closeReportPanel(); } catch (e) {}
+        const panel = document.getElementById("cloudReportFullscreen");
+        if (!panel) { notify("Painel de detalhes indisponível.", "error"); return; }
         panel.classList.add("show");
         panel.setAttribute("aria-hidden", "false");
         document.body.classList.add("report-panel-open");
@@ -3779,7 +3774,6 @@ if (S.collectorMode) {
         if (!panel) return;
         panel.classList.remove("show");
         panel.setAttribute("aria-hidden", "true");
-        // só remove a trava de scroll se o outro painel também não estiver aberto
         if (!document.getElementById("reportFullscreen")?.classList.contains("show")) {
           document.body.classList.remove("report-panel-open");
         }
@@ -3804,19 +3798,16 @@ if (S.collectorMode) {
           search.placeholder = isOps ? "Buscar OP..." : "Buscar código, OP, status, local...";
           search.value = isOps ? (cloudReportOpSummarySearch || "") : (cloudDetailSearch || "");
         }
-        // sincroniza chips de filtro da lista
         document.querySelectorAll("#cloudReportDetailFilters .fbtn").forEach((b) => {
           b.classList.toggle("active", (b.getAttribute("data-filter") || "") === (cloudDetailFilter || "all"));
         });
         updateCloudReportPanelMetrics();
         if (isOps) {
-          // no modo OP, a busca filtra OPs (não a lista de bobinas)
           const prevSearch = cloudDetailSearch;
-          cloudDetailSearch = ""; // não aplica busca de bobina no resumo base
+          cloudDetailSearch = "";
           cloudRenderDetailOpSummary();
-          // se houver busca de OP, filtra visualmente os cards
-          if (cloudReportOpSummarySearch) cloudFilterOpSummaryCards(cloudReportOpSummarySearch);
           cloudDetailSearch = prevSearch;
+          if (cloudReportOpSummarySearch) cloudFilterOpSummaryCards(cloudReportOpSummarySearch);
         } else {
           cloudRenderDetailRows();
         }
@@ -3833,7 +3824,6 @@ if (S.collectorMode) {
       function cloudReportPanelSearch(v) {
         if (cloudReportPanelMode === "ops") {
           cloudReportOpSummarySearch = v || "";
-          // re-render resumo e aplica filtro de OP
           const prev = cloudDetailSearch;
           cloudDetailSearch = "";
           cloudRenderDetailOpSummary();
@@ -3842,7 +3832,6 @@ if (S.collectorMode) {
         } else {
           cloudDetailSearch = v || "";
           cloudRenderDetailRows();
-          cloudRenderDetailOpSummary();
         }
       }
       function exportRpt(fmt) {
@@ -4405,5 +4394,5 @@ document.addEventListener("keydown", (e) => {
 
 init();
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a180e007b82c9872',t:'MTc4MzUzMjQzNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1eb9d390d0ee033',t:'MTc4NDY1MTY3Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2241a596d04a9e4',t:'MTc4NTI0NDAwNQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a180e007b82c9872',t:'MTc4MzUzMjQzNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1eb9d390d0ee033',t:'MTc4NDY1MTY3Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a223ff41bff94bbe',t:'MTc4NTI0Mjg5NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
