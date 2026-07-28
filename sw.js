@@ -1,8 +1,8 @@
 /* Conferência de Bobinas — Service Worker
- * v9: cloud report panel +  HTML network-first (atualiza sozinho) + limpa caches antigos.
+ * v10: painel conferencia +  HTML network-first (atualiza sozinho) + limpa caches antigos.
  * Publique este arquivo junto com o index.html sempre que mudar o app.
  */
-const CACHE_NAME = "conferencia-bobinas-v9";
+const CACHE_NAME = "conferencia-bobinas-v10";
 
 const PRECACHE_ASSETS = [
   "./",
