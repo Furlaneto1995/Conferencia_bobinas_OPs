@@ -13,10 +13,10 @@
       name="apple-mobile-web-app-status-bar-style"
       content="black-translucent"
     />
-    <meta name="apple-mobile-web-app-title" content="Bobinas Setor" />
+    <meta name="apple-mobile-web-app-title" content="Bobinas" />
     <link rel="manifest" href="./manifest.json" />
     <link rel="apple-touch-icon" href="./icon-192.png" />
-    <title>Conferência de Bobinas (Setor)</title>
+    <title>Conferência de Bobinas</title>
     <script src="./jszip.min.js"></script>
     <script src="./html5-qrcode.local.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
@@ -561,9 +561,6 @@
       }
       .admin-pin-display:focus { border-color: rgba(59, 130, 246, 0.55); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12); }
       .admin-pin-error { color: var(--accent-red); font-size: 0.82em; font-weight: 700; display: none; margin-bottom: 8px; text-align: center; }
-      #factoryGateModal { z-index: 9000; }
-      #factoryGateModal .modal { max-width: 400px; }
-      .factory-gate-note { font-size: 0.82em; color: var(--text-muted); margin-top: 6px; line-height: 1.35; }
       @media (pointer: coarse) {
         body, button, .card, .tab, .scanner-overlay { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
         input, textarea, select, [contenteditable="true"] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
@@ -898,6 +895,49 @@
           <div id="cloudDetailBox" class="cloud-detail"></div>
           <div id="cloudConsultBox" class="cloud-list" style="margin-top: 12px"><div class="empty">Clique em atualizar para consultar.</div></div>
         </div>
+
+        <div class="report-fullscreen" id="cloudReportFullscreen" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="cloudReportPanelTitle">
+          <div class="report-fullscreen-head">
+            <div class="report-panel-row">
+              <button type="button" class="report-back-btn" onclick="closeCloudReportPanel()">← Voltar</button>
+              <div class="report-panel-title-wrap">
+                <div class="report-panel-title" id="cloudReportPanelTitle">📦 Resumo por OP's</div>
+                <div class="report-panel-sub" id="cloudReportPanelSub">Progresso por OP em tela cheia.</div>
+              </div>
+            </div>
+            <div class="report-mode-switch" aria-label="Alternar visualização da conferência">
+              <button type="button" id="cloudReportModeOps" onclick="setCloudReportPanelMode('ops')">📦 OP's</button>
+              <button type="button" id="cloudReportModeDetail" onclick="setCloudReportPanelMode('detail')">📋 Lista</button>
+            </div>
+            <div class="search-wrap report-panel-search"><span class="si">🔍</span><input class="search-input" id="cloudReportFullscreenSearch" placeholder="Buscar OP..." oninput="cloudReportPanelSearch(this.value)" /></div>
+            <div class="filters report-detail-filters" id="cloudReportDetailFilters" style="display:none">
+              <button class="fbtn active" data-filter="all" onclick="cloudSetDetailFilter('all')">📋 Todos</button>
+              <button class="fbtn" data-filter="checked" onclick="cloudSetDetailFilter('checked')">✅ Conferidos</button>
+              <button class="fbtn" data-filter="pending" onclick="cloudSetDetailFilter('pending')">⏳ Pendentes</button>
+              <button class="fbtn" data-filter="extra" onclick="cloudSetDetailFilter('extra')">⚠️ Extras</button>
+            </div>
+          </div>
+          <div class="report-panel-content">
+            <div class="report-panel-view" id="cloudReportOpsView">
+              <div class="report-panel-metrics">
+                <div class="report-mini-stat"><strong id="cloudReportPanelOpsCount">0</strong><span>OP's</span></div>
+                <div class="report-mini-stat"><strong id="cloudReportPanelOpsFound">0</strong><span>Encontradas</span></div>
+                <div class="report-mini-stat"><strong id="cloudReportPanelOpsPending">0</strong><span>Pendentes</span></div>
+                <div class="report-mini-stat"><strong id="cloudReportPanelOpsPct">0%</strong><span>Geral</span></div>
+              </div>
+              <div class="op-summary-scroll report-op-summary-scroll"><div id="cloudDetailOpSummary"></div></div>
+            </div>
+            <div class="report-panel-view" id="cloudReportDetailView">
+              <div class="report-result-count" id="cloudReportDetailResultCount">0 itens</div>
+              <div class="tbl-wrap report-table-wrap">
+                <table class="dtbl report-detail-table">
+                  <thead><tr><th>#</th><th>Código</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Obs.</th><th>📸</th></tr></thead>
+                  <tbody id="cloudDetailRowsBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -992,11 +1032,12 @@
 
     <div class="modal-bg" id="modal"><div class="modal"><h2 id="mTitle">⚠️</h2><p id="mMsg"></p><div class="btn-group"><button class="btn btn-danger" id="mConfirm">Confirmar</button><button class="btn btn-outline" onclick="closeModal()">Cancelar</button></div></div></div>
     <div class="modal-bg" id="checkerModal"><div class="modal"><h2>👤 Operador</h2><p>Informe o nome do operador desta conferência:</p><input type="text" id="checkerInput" class="loc-input-main" placeholder="Digite o nome do operador" onkeydown="if (event.key === 'Enter') confirmCheckerName();" autocomplete="name" /><div id="checkerError" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Nome obrigatório!</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmCheckerName()">✅ Iniciar conferência</button><button class="btn btn-outline" onclick="closeCheckerModal()">Cancelar</button></div></div></div>
-    <div class="modal-bg" id="confTypeModal"><div class="modal" style="max-height: calc(100dvh - 32px); overflow: auto"><h2>📋 Tipo de Conferência</h2><p style="margin-bottom: 10px">Marque o setor que deve aparecer na conferência (coluna SETOR):</p><div style="display: grid; grid-template-columns: 1fr; gap: 8px">
-      <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer;"><input type="checkbox" class="conf-check" value="bases" checked style="width: 20px; height: 20px; accent-color: var(--accent-blue);" /><span style="flex: 1; font-weight: 700">Bases</span><small style="color: var(--text-muted)">IMPRESSÃO</small></label>
-      <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer;"><input type="checkbox" class="conf-check" value="capas" checked style="width: 20px; height: 20px; accent-color: var(--accent-blue);" /><span style="flex: 1; font-weight: 700">Capas</span><small style="color: var(--text-muted)">LAMINAÇÃO</small></label>
-      <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer;"><input type="checkbox" class="conf-check" value="refiladeira" checked style="width: 20px; height: 20px; accent-color: var(--accent-blue);" /><span style="flex: 1; font-weight: 700">Refiladeira</span><small style="color: var(--text-muted)">REFILADEIRA</small></label>
-      <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer;"><input type="checkbox" class="conf-check" value="corte_solda" checked style="width: 20px; height: 20px; accent-color: var(--accent-blue);" /><span style="flex: 1; font-weight: 700">Corte e solda</span><small style="color: var(--text-muted)">CORTE E SOLDA</small></label>
+    <div class="modal-bg" id="confTypeModal"><div class="modal" style="max-height: calc(100dvh - 32px); overflow: auto"><h2>📋 Tipo de Conferência</h2><p style="margin-bottom: 10px">Marque o que deve aparecer na conferência:</p><div style="display: grid; grid-template-columns: 1fr; gap: 8px">
+      <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer;"><input type="checkbox" class="conf-check" value="bases_todas" checked style="width: 20px; height: 20px; accent-color: var(--accent-blue);" /><span style="flex: 1; font-weight: 700">Bases - Todas</span><small style="color: var(--text-muted)">Etapa 20</small></label>
+      <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer;"><input type="checkbox" class="conf-check" value="bases_peliculas" checked style="width: 20px; height: 20px; accent-color: var(--accent-blue);" /><span style="flex: 1; font-weight: 700">Bases - Películas</span><small style="color: var(--text-muted)">BOPP/PP/PET</small></label>
+      <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer;"><input type="checkbox" class="conf-check" value="capas" checked style="width: 20px; height: 20px; accent-color: var(--accent-blue);" /><span style="flex: 1; font-weight: 700">Capas</span><small style="color: var(--text-muted)">30/31</small></label>
+      <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer;"><input type="checkbox" class="conf-check" value="refiladeira" checked style="width: 20px; height: 20px; accent-color: var(--accent-blue);" /><span style="flex: 1; font-weight: 700">Refiladeira</span><small style="color: var(--text-muted)">40-47</small></label>
+      <label style="display: flex; align-items: center; gap: 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer;"><input type="checkbox" class="conf-check" value="cs" checked style="width: 20px; height: 20px; accent-color: var(--accent-blue);" /><span style="flex: 1; font-weight: 700">C&S</span><small style="color: var(--text-muted)">50-55</small></label>
       <div class="btn-group" style="margin-top: 4px"><button class="btn btn-outline" onclick="setAllConferenceChecks(true)">Marcar todos</button><button class="btn btn-outline" onclick="setAllConferenceChecks(false)">Limpar</button></div>
       <button class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px 14px" onclick="importSelectedConferenceTypes()">📥 Importar selecionados</button>
       <button class="btn btn-outline" style="width: 100%; justify-content: center; padding: 12px 14px" onclick="closeConferenceTypeModal()">Cancelar</button>
@@ -1024,14 +1065,6 @@
         <button class="btn btn-outline" onclick="closeAdminPinModal(false)">Cancelar</button>
       </div>
     </div></div>
-    <div class="modal-bg" id="factoryGateModal"><div class="modal" style="max-width: 400px">
-      <h2>🔐 Acesso da fábrica</h2>
-      <p>Digite o código da fábrica para liberar a nuvem neste aparelho. Só precisa uma vez.</p>
-      <input id="factoryCodeInput" class="admin-pin-display" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" enterkeyhint="done" maxlength="16" placeholder="Código numérico" oninput="adminPinOnInput(this)" onkeydown="if (event.key === 'Enter') { event.preventDefault(); confirmFactoryGate(); }" />
-      <div id="factoryCodeError" class="admin-pin-error">⚠️ Código incorreto!</div>
-      <p class="factory-gate-note">Sem e-mail/senha no dia a dia. Este código só autoriza o aparelho da fábrica a usar a nuvem.</p>
-      <div class="btn-group"><button class="btn btn-primary" onclick="confirmFactoryGate()">✅ Liberar aparelho</button></div>
-    </div></div>
 
     <div class="modal-bg" id="locModal"><div class="modal" style="border-color: var(--accent-red)"><h2 style="color: var(--accent-red)">⚠️ Bobina Não Prevista</h2><div class="loc-code-display" id="locCodeMain"></div><p id="locModalDesc">Informe a localização desta bobina:</p><input type="text" id="locInputMain" class="loc-input-main" placeholder="Ex: Galpão A, Corredor 3..." onkeydown="if (event.key === 'Enter') confirmLocMain();" autocomplete="off" /><textarea id="locObsMain" class="loc-input-main" placeholder="Observação (opcional)" style="min-height: 76px; resize: vertical; font-family: inherit;"></textarea><div class="loc-photo-section" id="locPhotoSection"><div class="loc-photo-grid"><div><div class="loc-photo-label">🏷️ Foto da etiqueta <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnEtiqueta" onclick="document.getElementById('locPhotoInputEtiqueta').click()">📷 Tirar foto da etiqueta<input type="file" id="locPhotoInputEtiqueta" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'etiqueta')" /></div><div class="loc-photo-preview" id="locPhotoPreviewEtiqueta"><img id="locPhotoImgEtiqueta" src="" /><button class="loc-photo-remove" onclick="locRemovePhoto('etiqueta')">✕</button></div><div class="loc-photo-error" id="locPhotoErrorEtiqueta">⚠️ Foto da etiqueta obrigatória!</div></div><div><div class="loc-photo-label">📦 Foto da bobina <span style="color: var(--accent-red); font-weight: 700">*obrigatória</span></div><div class="loc-photo-btn" id="locPhotoBtnBobina" onclick="document.getElementById('locPhotoInputBobina').click()">📷 Tirar foto da bobina<input type="file" id="locPhotoInputBobina" accept="image/*" capture="environment" onchange="locHandlePhoto(event, 'bobina')" /></div><div class="loc-photo-preview" id="locPhotoPreviewBobina"><img id="locPhotoImgBobina" src="" /><button class="loc-photo-remove" onclick="locRemovePhoto('bobina')">✕</button></div><div class="loc-photo-error" id="locPhotoErrorBobina">⚠️ Foto da bobina obrigatória!</div></div></div></div><div id="locErrorMain" style="color: var(--accent-red); font-size: 0.82em; font-weight: 600; display: none; margin-bottom: 8px;">⚠️ Localização obrigatória!</div><div class="btn-group"><button class="btn btn-primary" onclick="confirmLocMain()">✅ Confirmar</button><button class="btn btn-outline" onclick="cancelLocMain()">Cancelar</button></div></div></div>
     <div class="photo-modal" id="photoModal"><div style="text-align: center; color: #fff; font-weight: 700; max-width: 100%; max-height: 82vh; overflow: auto;">🏷️ Etiqueta + 📦 Bobina<br /><img id="photoModalImg" src="" /></div><button class="photo-modal-close" onclick="closePhotoModal()">✕ Fechar</button></div>
@@ -1044,6 +1077,8 @@
       };
       let reportPanelMode = "ops";
       let reportOpSummarySearch = "";
+      let cloudReportPanelMode = "ops";
+      let cloudReportOpSummarySearch = "";
       let currentImportedFile = {
         name: "",
         content: "",
@@ -1086,10 +1121,6 @@ let cloudLastHeaderWrite = 0;
         camCurrentPhotoBobina = null, camActx = null;
       const CAM_SCAN_DELAY_MS = 1800;
       const ADMIN_PASSWORD = "35210712";
-      // Código da fábrica (operador NÃO faz login diário). Troque antes de publicar.
-      const FACTORY_ACCESS_CODE = "882211";
-      const FACTORY_GATE_KEY = "bob_factory_gate_v1";
-      const FACTORY_GATE_ENABLED = true;
       const FIREBASE_CONFIG = {
         apiKey: "AIzaSyCJTpQfv3pTOXHvV4TpQl2h2tF0TdtWiNw",
         authDomain: "conferencia-bobinas.firebaseapp.com",
@@ -1172,120 +1203,6 @@ let cloudLastHeaderWrite = 0;
       }
 
       function cloudIsConfigured() { return !!(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId && FIREBASE_CONFIG.appId); }
-      function factoryGateUnlocked() {
-        if (!FACTORY_GATE_ENABLED) return true;
-        try { return localStorage.getItem(FACTORY_GATE_KEY) === "1"; } catch (e) { return false; }
-      }
-      function setFactoryGateUnlocked(ok) {
-        try { if (ok) localStorage.setItem(FACTORY_GATE_KEY, "1"); else localStorage.removeItem(FACTORY_GATE_KEY); } catch (e) {}
-      }
-      function showFactoryGateModal() {
-        const modal = document.getElementById("factoryGateModal");
-        const input = document.getElementById("factoryCodeInput");
-        const err = document.getElementById("factoryCodeError");
-        if (err) err.style.display = "none";
-        if (input) input.value = "";
-        if (modal) modal.classList.add("show");
-        setTimeout(() => { try { input?.focus(); input?.click(); } catch (e) {} }, 80);
-      }
-      function hideFactoryGateModal() { document.getElementById("factoryGateModal")?.classList.remove("show"); }
-      function confirmFactoryGate() {
-        const input = document.getElementById("factoryCodeInput");
-        const err = document.getElementById("factoryCodeError");
-        const code = String(input?.value || "").replace(/\D/g, "");
-        if (code && code === String(FACTORY_ACCESS_CODE)) {
-          setFactoryGateUnlocked(true); hideFactoryGateModal();
-          notify("Aparelho liberado para a nuvem da fábrica.");
-          cloudInit().catch(() => {});
-          return;
-        }
-        if (err) err.style.display = "block";
-        if (input) { input.value = ""; input.focus(); }
-        notify("Código da fábrica incorreto.", "error");
-      }
-      function ensureFactoryGate() {
-        if (factoryGateUnlocked()) return true;
-        showFactoryGateModal();
-        return false;
-      }
-      function supabaseHeaders(extra = {}) {
-        return { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, ...extra };
-      }
-      function supabaseObjectPath(path = "") { return String(path || "").replace(/^\/+/, ""); }
-      function supabaseAuthenticatedUrl(path = "") {
-        const clean = supabaseObjectPath(path);
-        return `${SUPABASE_URL}/storage/v1/object/authenticated/${SUPABASE_BUCKET}/${encodeURIComponent(clean).replace(/%2F/g, "/")}`;
-      }
-      function supabasePublicUrl(path = "") {
-        const clean = supabaseObjectPath(path);
-        return `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${encodeURIComponent(clean).replace(/%2F/g, "/")}`;
-      }
-      function supabasePathFromAnyUrl(url = "") {
-        const s = String(url || "");
-        if (!s) return "";
-        if (!/^https?:\/\//i.test(s)) return supabaseObjectPath(s);
-        const markers = [
-          `/storage/v1/object/public/${SUPABASE_BUCKET}/`,
-          `/storage/v1/object/authenticated/${SUPABASE_BUCKET}/`,
-          `/storage/v1/object/sign/${SUPABASE_BUCKET}/`,
-          `/storage/v1/object/${SUPABASE_BUCKET}/`,
-        ];
-        for (const m of markers) {
-          const idx = s.indexOf(m);
-          if (idx >= 0) {
-            let rest = s.slice(idx + m.length).split("?")[0];
-            try { rest = decodeURIComponent(rest); } catch (e) {}
-            return supabaseObjectPath(rest);
-          }
-        }
-        return "";
-      }
-      async function cloudCreateSignedUrl(path = "", expiresSec = 1800) {
-        const clean = supabaseObjectPath(path);
-        if (!clean) throw new Error("Caminho de arquivo vazio");
-        const endpoint = `${SUPABASE_URL}/storage/v1/object/sign/${SUPABASE_BUCKET}/${encodeURIComponent(clean).replace(/%2F/g, "/")}`;
-        const res = await fetch(endpoint, {
-          method: "POST",
-          headers: supabaseHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify({ expiresIn: expiresSec }),
-        });
-        if (!res.ok) {
-          const txt = await res.text().catch(() => "");
-          throw new Error(`Falha ao assinar arquivo (${res.status}): ${txt}`);
-        }
-        const data = await res.json().catch(() => ({}));
-        const signed = data.signedURL || data.signedUrl || data.url || "";
-        if (!signed) throw new Error("Supabase não retornou URL assinada");
-        if (/^https?:\/\//i.test(signed)) return signed;
-        return `${SUPABASE_URL}/storage/v1${signed.startsWith("/") ? "" : "/"}${signed}`;
-      }
-      async function cloudFetchStorage({ path = "", url = "", as = "text" } = {}) {
-        const clean = supabaseObjectPath(path) || supabasePathFromAnyUrl(url);
-        if (clean) {
-          let res = await fetch(supabaseAuthenticatedUrl(clean), { headers: supabaseHeaders(), cache: "no-store" });
-          if (!res.ok) {
-            try {
-              const signed = await cloudCreateSignedUrl(clean, 1800);
-              res = await fetch(signed, { cache: "no-store" });
-            } catch (e) {
-              if (url && /\/object\/public\//.test(String(url))) res = await fetch(url, { cache: "no-store" });
-              else res = await fetch(supabasePublicUrl(clean), { cache: "no-store" });
-            }
-          }
-          if (!res.ok) throw new Error(`Falha ao baixar arquivo da nuvem (${res.status})`);
-          if (as === "blob") return await res.blob();
-          if (as === "json") return await res.json();
-          return await res.text();
-        }
-        if (url) {
-          const res = await fetch(url, { cache: "no-store" });
-          if (!res.ok) throw new Error(`Falha ao baixar URL legada (${res.status})`);
-          if (as === "blob") return await res.blob();
-          if (as === "json") return await res.json();
-          return await res.text();
-        }
-        throw new Error("Arquivo sem path/URL");
-      }
       function cloudStartSecretPress(ev) {
         if (ev) ev.preventDefault();
         cloudSecretLongPress = false;
@@ -1507,11 +1424,6 @@ let cloudLastHeaderWrite = 0;
       async function cloudInit() {
         try {
           if (!cloudIsConfigured()) { cloudSetStatus("", "☁️ Nuvem: local"); return false; }
-          if (!ensureFactoryGate()) {
-            cloudReady = false;
-            cloudSetStatus("error", "☁️ Bloqueado: código da fábrica");
-            return false;
-          }
           if (typeof firebase === "undefined") { console.warn("Firebase SDK não carregado."); return false; }
           if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
           if (firebase.auth) {
@@ -1621,7 +1533,7 @@ let cloudLastHeaderWrite = 0;
         for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
         return new Blob([arr], { type: mime });
       }
-      async function cloudUploadPhoto(code, dataUrl) {
+      async function cloudUploadPhoto(code, dataUrl, location = "") {
         try {
           if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !dataUrl) return null;
           if (!S.cloudSessionId) {
@@ -1630,20 +1542,25 @@ let cloudLastHeaderWrite = 0;
             save();
           }
           if (!S.cloudSessionId) return null;
-          const safeCode = String(code).replace(/[^a-zA-Z0-9_-]/g, "_");
-          const path = `${cloudOperatorKey()}/${cloudDateKey()}/${S.cloudSessionId}/${safeCode}_etiqueta_bobina.jpg`;
+          let loc = location;
+          if (!loc) {
+            const scan = (S.scanned || []).find((s) => String(s.code) === String(code) && s.location);
+            loc = scan?.location || "";
+          }
+          const fileName = (typeof photoFileName === "function")
+            ? photoFileName(code, loc)
+            : `${String(code).replace(/[^a-zA-Z0-9_-]/g, "_")}_etiqueta_bobina.jpg`;
+          const path = `${cloudOperatorKey()}/${cloudDateKey()}/${S.cloudSessionId}/${fileName}`;
           const blob = cloudDataUrlToBlob(dataUrl);
           const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${encodeURIComponent(path).replace(/%2F/g, "/")}`;
-          const res = await fetch(uploadUrl, { method: "POST", headers: supabaseHeaders({ "Content-Type": "image/jpeg", "x-upsert": "true" }), body: blob });
+          const res = await fetch(uploadUrl, { method: "POST", headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "image/jpeg", "x-upsert": "true" }, body: blob });
           if (!res.ok) {
             const txt = await res.text().catch(() => "");
             throw new Error(`Supabase upload ${res.status}: ${txt}`);
           }
           return {
-            url: "",
+            url: `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${encodeURIComponent(path).replace(/%2F/g, "/")}`,
             path,
-            storagePath: path,
-            private: true,
             size: blob.size,
           };
         } catch (e) {
@@ -1657,10 +1574,12 @@ let cloudLastHeaderWrite = 0;
         const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${encodeURIComponent(path).replace(/%2F/g, "/")}`;
         const res = await fetch(uploadUrl, {
           method: "POST",
-          headers: supabaseHeaders({
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
             "Content-Type": "application/json; charset=utf-8",
             "x-upsert": "true",
-          }),
+          },
           body: content,
         });
         if (!res.ok) {
@@ -1668,10 +1587,8 @@ let cloudLastHeaderWrite = 0;
           throw new Error(`Upload relatório ${res.status}: ${txt}`);
         }
         return {
-          url: "",
+          url: `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${encodeURIComponent(path).replace(/%2F/g, "/")}`,
           path,
-          storagePath: path,
-          private: true,
           size: new Blob([content]).size,
         };
       }
@@ -1694,17 +1611,20 @@ let cloudLastHeaderWrite = 0;
         const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${encodeURIComponent(path).replace(/%2F/g, "/")}`;
         const res = await fetch(uploadUrl, {
           method: "POST",
-          headers: supabaseHeaders({
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
             "Content-Type": mimeType || "text/plain; charset=utf-8",
             "x-upsert": "true",
-          }),
+          },
           body: content,
         });
         if (!res.ok) {
           const txt = await res.text().catch(() => "");
           throw new Error(`Upload arquivo-base ${res.status}: ${txt}`);
         }
-        return { path, publicUrl: "", storagePath: path, private: true };
+        const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${encodeURIComponent(path).replace(/%2F/g, "/")}`;
+        return { path, publicUrl };
       }
       async function cloudDeleteSupabasePrefixes(prefixes = []) {
         const clean = [...new Set((prefixes || []).filter(Boolean))];
@@ -1713,7 +1633,7 @@ let cloudLastHeaderWrite = 0;
           const batch = clean.slice(i, i + 100);
           const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}`, {
             method: "DELETE",
-            headers: supabaseHeaders({ "Content-Type": "application/json" }),
+            headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json" },
             body: JSON.stringify({ prefixes: batch }),
           });
           if (!res.ok) {
@@ -1746,9 +1666,8 @@ let cloudLastHeaderWrite = 0;
           tipoConferencia: tipoConferencia || "Arquivo completo",
           origem: origem || "leader-device",
           mimeType: mimeType || cloudMimeTypeFromFileName(fileName),
-          storagePath: uploaded.path || uploaded.storagePath || "",
-          storageUrl: uploaded.publicUrl || "",
-          privateStorage: true,
+          storagePath: uploaded.path,
+          storageUrl: uploaded.publicUrl,
           status: "ativo",
           ativo: true,
         };
@@ -1988,10 +1907,11 @@ let cloudLastHeaderWrite = 0;
             if (!doc.exists) throw new Error("Nenhuma base ativa encontrada");
             data = { id: doc.id, ...doc.data() };
           }
-          const storagePath = data.storagePath || supabasePathFromAnyUrl(data.storageUrl || "");
-          if (!storagePath && !data.storageUrl) throw new Error("Base ativa sem caminho de armazenamento");
+          if (!data.storageUrl) throw new Error("Base ativa sem URL de armazenamento");
           cloudSetStatus("sync", "Baixando base ativa...");
-          const content = await cloudFetchStorage({ path: storagePath, url: data.storageUrl || "", as: "text" });
+          const res = await fetch(data.storageUrl, { cache: "no-store" });
+          if (!res.ok) throw new Error("Falha ao baixar base ativa");
+          const content = await res.text();
 
           resetConferenceData({ keepImportedFile: false });
 
@@ -2054,10 +1974,9 @@ let cloudLastHeaderWrite = 0;
             time: i.time === "-" ? "" : (i.time || ""),
             location: i.location === "-" ? "" : (i.location || ""),
             observation: i.observation || "",
-            hasPhoto: !!(i.hasPhoto || up?.url || up?.path),
+            hasPhoto: !!(i.hasPhoto || up?.url),
             fotoUrl: up?.url || "",
-            fotoPath: up?.path || up?.storagePath || "",
-            storagePath: up?.path || up?.storagePath || "",
+            fotoPath: up?.path || "",
           };
         });
         return {
@@ -2140,8 +2059,7 @@ let cloudLastHeaderWrite = 0;
             storageMode: "economico_supabase_json",
             reportProvider: "supabase",
             reportPath: reportUpload.path,
-            reportUrl: "",
-            privateStorage: true,
+            reportUrl: reportUpload.url,
             reportSize: reportUpload.size,
             fotosEnviadas: Object.keys(photoUploads).length,
             storagePrefix: `${cloudOperatorKey()}/${cloudDateKey()}/${S.cloudSessionId}/`,
@@ -2257,8 +2175,10 @@ let cloudLastHeaderWrite = 0;
         const confSnap = await confRef.get(); if (!confSnap.exists) throw new Error("Conferência não encontrada");
         const conf = { id: confSnap.id, ...confSnap.data() };
         // Novo formato econômico: Firestore guarda só o resumo e o link do JSON completo no Supabase.
-        if (conf.reportPath || conf.reportUrl) {
-          const report = await cloudFetchStorage({ path: conf.reportPath || "", url: conf.reportUrl || "", as: "json" });
+        if (conf.reportUrl) {
+          const resp = await fetch(conf.reportUrl, { cache: "no-store" });
+          if (!resp.ok) throw new Error("Falha ao baixar relatório Supabase: HTTP " + resp.status);
+          const report = await resp.json();
           const rows = Array.isArray(report.rows) ? report.rows : [];
           const resumo = report.resumo || conf.resumo || {};
           return {
@@ -2389,12 +2309,14 @@ let cloudLastHeaderWrite = 0;
             if (txt) zip.file(`relatorio_${safeId}.txt`, "\uFEFF" + txt);
             if (opt.photosZip) {
               const fotosFolder = zip.folder("fotos");
-              const rows = cloudFilterRowsForExport(data.rows, opt).filter((r) => r.fotoUrl || r.fotoPath || r.storagePath);
+              const rows = cloudFilterRowsForExport(data.rows, opt).filter((r) => r.fotoUrl);
               for (let idx = 0; idx < rows.length; idx++) {
                 const r = rows[idx];
                 try {
-                  const blob = await cloudFetchStorage({ path: r.fotoPath || r.storagePath || "", url: r.fotoUrl || "", as: "blob" });
-                  fotosFolder.file(`${r.code}_etiqueta_bobina.jpg`, blob);
+                  const resp = await fetch(r.fotoUrl); if (!resp.ok) throw new Error("HTTP " + resp.status);
+                  const blob = await resp.blob();
+                  const fname = (typeof photoFileName === "function") ? photoFileName(r.code, r.location || "") : `${r.code}_etiqueta_bobina.jpg`;
+                  fotosFolder.file(fname, blob);
                   const progress = document.getElementById("exportProgress");
                   if (progress) { progress.classList.add("show"); progress.textContent = `⏳ Baixando fotos ${idx + 1}/${rows.length}...`; }
                 } catch (e) { console.warn("Falha ao baixar foto para ZIP:", r.code, e); }
@@ -2470,30 +2392,66 @@ let cloudLastHeaderWrite = 0;
         if (!silent) box.innerHTML = '<div class="empty">Abrindo conferência...</div>';
         try {
           const data = await cloudBuildExportData(confId);
-          cloudDetailRows = data.rows;
-          cloudDetailFilter = prevFilter;
-          cloudDetailSearch = prevSearch;
+          cloudDetailRows = data.rows || [];
+          cloudDetailFilter = prevFilter || "all";
+          cloudDetailSearch = prevSearch || "";
+          cloudReportOpSummarySearch = silent ? cloudReportOpSummarySearch : "";
           cloudDetailConfId = data.id;
-          box.innerHTML = `<div class="cloud-detail-head"><div><div class="cloud-detail-title">${esc(data.operador || "-")} • ${esc(cloudFormatSessionMeta(data.id, data.data || ""))}</div><div class="cloud-detail-sub">${esc(data.tipo || "-")}</div></div><button class="cloud-detail-close" onclick="cloudCloseConferenceDetail()">✕ Fechar</button></div>
+          const r = data.resumo || {};
+          const opCount = Array.isArray(data.opSummary) ? data.opSummary.length : 0;
+          const pct = (r.percentual != null ? r.percentual : 0) + "%";
+          box.innerHTML = `<div class="cloud-detail-head"><div><div class="cloud-detail-title">${esc(data.operador || "-")} • ${esc(cloudFormatSessionMeta(data.id, data.data || ""))}</div><div class="cloud-detail-sub">${esc(data.tipo || "-")}</div></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+              <button class="cloud-report-btn" onclick="cloudShowExportModal(cloudDetailConfId)">Exportar</button>
+              <button class="cloud-detail-close" onclick="cloudCloseConferenceDetail()">✕ Fechar</button>
+            </div>
+          </div>
           <div class="cloud-detail-stats">
-            <div class="cloud-detail-stat clickable active" id="cloudDetailStatAll" onclick="cloudSetDetailFilter('all')">Total<strong>${data.resumo.total}</strong></div>
-            <div class="cloud-detail-stat clickable" id="cloudDetailStatChecked" onclick="cloudSetDetailFilter('checked')">Conferidas<strong>${data.resumo.conferidos}</strong></div>
-            <div class="cloud-detail-stat clickable" id="cloudDetailStatPending" onclick="cloudSetDetailFilter('pending')">Pendentes<strong>${data.resumo.pendentes}</strong></div>
-            <div class="cloud-detail-stat clickable" id="cloudDetailStatExtra" onclick="cloudSetDetailFilter('extra')">Não previstas<strong>${data.resumo.naoPrevistas}</strong></div>
+            <div class="cloud-detail-stat">Total<strong>${r.total ?? 0}</strong></div>
+            <div class="cloud-detail-stat">Conferidas<strong>${r.conferidos ?? 0}</strong></div>
+            <div class="cloud-detail-stat">Pendentes<strong>${r.pendentes ?? 0}</strong></div>
+            <div class="cloud-detail-stat">Não previstas<strong>${r.naoPrevistas ?? 0}</strong></div>
           </div>
-          <div class="cloud-detail-section-title">📦 Resumo por OP</div>
-          <div class="op-summary-list" id="cloudDetailOpSummary" style="max-height:220px;overflow:auto;padding-right:4px"></div>
-          <div class="cloud-detail-toolbar">
-            <div class="cloud-detail-section-title" style="margin:0">📋 Bobinas e leituras</div>
-            <button class="cloud-report-btn" onclick="cloudShowExportModal(cloudDetailConfId)">Exportar</button>
-          </div>
-          <div class="search-wrap" style="margin-bottom: 8px"><span class="si">🔍</span><input class="search-input" id="cloudDetailSearch" placeholder="Buscar código, OP, status ou observação..." oninput="cloudDetailSearch=this.value; cloudRenderDetailRows(); cloudRenderDetailOpSummary()" /></div>
-          ${data.missingBobinas ? `<div style="margin:8px 0 0; padding:10px 12px; border-radius:10px; border:1px solid rgba(245,158,11,.28); background: rgba(245,158,11,.08); color: var(--accent-yellow); font-size:.82em; font-weight:700;">⚠️ Conferência antiga sem base de bobinas.</div>` : ""}
-          <div class="cloud-detail-scroll" style="margin-top: 8px"><table class="dtbl"><thead><tr><th>#</th><th>Código</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Obs.</th><th>📸</th></tr></thead><tbody id="cloudDetailRowsBody"></tbody></table></div>`;
-          const detailSearchInput = document.getElementById("cloudDetailSearch"); if (detailSearchInput) detailSearchInput.value = cloudDetailSearch || "";
-          cloudApplyDetailFilterUI();
-          cloudRenderDetailOpSummary();
-          cloudRenderDetailRows();
+          <div class="prog-wrap" style="margin:10px 0 12px"><div class="prog-head"><span>Conferência Geral</span><span class="pct">${esc(String(pct))}</span></div><div class="prog-bar"><div class="prog-fill" style="width:${esc(String(pct))}"></div></div></div>
+          ${data.missingBobinas ? `<div style="margin:0 0 10px; padding:10px 12px; border-radius:10px; border:1px solid rgba(245,158,11,.28); background: rgba(245,158,11,.08); color: var(--accent-yellow); font-size:.82em; font-weight:700;">⚠️ Conferência antiga sem base de bobinas.</div>` : ""}
+          <div class="card-title" style="margin-top:4px">🔎 Detalhes da conferência</div>
+          <div class="card-sub">Toque em uma opção para abrir em tela cheia com busca, filtros e rolagem própria.</div>
+          <div class="report-actions-grid" style="margin-top:10px">
+            <button type="button" class="report-action-card" onclick="openCloudReportPanel('ops')">
+              <span class="report-action-icon blue">📦</span>
+              <span class="report-action-main">
+                <span class="report-action-title">Resumo por OP's</span>
+                <span class="report-action-desc">Visualizar o progresso de cada OP, com encontradas, pendentes e percentual.</span>
+                <span class="report-action-metrics">
+                  <span><strong id="cloudCardOpCount">${opCount}</strong> OP's</span>
+                  <span><strong id="cloudCardOpFound">${r.conferidos ?? 0}</strong>/<strong id="cloudCardOpTotal">${r.total ?? 0}</strong> encontradas</span>
+                  <span><strong id="cloudCardOpPct">${esc(String(pct))}</strong> geral</span>
+                </span>
+              </span>
+              <span class="report-open-pill">Abrir</span>
+            </button>
+            <button type="button" class="report-action-card" onclick="openCloudReportPanel('detail')">
+              <span class="report-action-icon green">📋</span>
+              <span class="report-action-main">
+                <span class="report-action-title">Lista detalhada</span>
+                <span class="report-action-desc">Ver bobina a bobina com código, OP, peso, status, horário, local, observação e foto.</span>
+                <span class="report-action-metrics">
+                  <span><strong id="cloudCardDetailCount">${(data.rows || []).length}</strong> itens</span>
+                  <span><strong id="cloudCardDetailChecked">${r.conferidos ?? 0}</strong> conferidas</span>
+                  <span><strong id="cloudCardDetailPending">${r.pendentes ?? 0}</strong> pendentes</span>
+                  <span><strong id="cloudCardDetailExtra">${r.naoPrevistas ?? 0}</strong> extras</span>
+                </span>
+              </span>
+              <span class="report-open-pill">Abrir</span>
+            </button>
+          </div>`;
+          updateCloudReportPanelMetrics();
+          // Se o painel fullscreen já estiver aberto, só atualiza o conteúdo
+          if (document.getElementById("cloudReportFullscreen")?.classList.contains("show")) {
+            setCloudReportPanelMode(cloudReportPanelMode);
+          } else if (!silent) {
+            // mantém fechado, igual ao relatório
+          }
           if (!silent) box.scrollIntoView({ behavior: "smooth", block: "start" });
           cloudSetStatus("ok", "☁️ Conferência aberta");
         } catch (e) {
@@ -2526,6 +2484,7 @@ let cloudLastHeaderWrite = 0;
       function cloudRenderDetailOpSummary() {
         const box = document.getElementById("cloudDetailOpSummary");
         if (!box) return;
+        // se o container for o do painel fullscreen, envolve em lista estilizada
         const baseRows = (cloudDetailRows || []).filter((r) => !String(r.status).includes("Não Prevista"));
         const filteredRows = cloudRowsByDetailFilter(true);
         const baseMap = new Map();
@@ -2552,10 +2511,12 @@ let cloudLastHeaderWrite = 0;
             box.innerHTML = '<div class="empty">Nenhuma OP encontrada.</div>';
             return;
           }
-          box.innerHTML = entries.map((op) => {
+          box.innerHTML = '<div class="op-summary-list">' + entries.map((op) => {
             const pct = op.total > 0 ? ((op.checked / op.total) * 100).toFixed(1) : "0.0";
-            return `<div class="op-summary-item"><div class="op-summary-op">OP ${esc(op.op || "-")}</div><div class="op-summary-info"><span>✅ Encontradas: <strong>${op.checked}/${op.total}</strong></span><span>📊 <strong>${pct}%</strong></span></div></div>`;
-          }).join("");
+            const pctNum = Math.max(0, Math.min(100, Number(pct) || 0));
+            return `<div class="op-summary-item"><div class="op-summary-head"><div class="op-summary-op">OP ${esc(op.op || "-")}</div><div class="op-summary-pct">${esc(pct)}%</div></div><div class="op-summary-info"><span>✅ Encontradas: <strong>${op.checked}/${op.total}</strong></span><span>⏳ Pendentes: <strong>${Math.max(0, op.total - op.checked)}</strong></span></div><div class="op-summary-progress"><span style="width:${pctNum}%"></span></div></div>`;
+          }).join("") + '</div>';
+          if (cloudReportOpSummarySearch) cloudFilterOpSummaryCards(cloudReportOpSummarySearch);
           return;
         }
         entries = Array.from(filteredMap.values()).sort((a, b) => String(a.op).localeCompare(String(b.op), "pt-BR", { numeric: true, sensitivity: "base" }));
@@ -2563,7 +2524,7 @@ let cloudLastHeaderWrite = 0;
           box.innerHTML = '<div class="empty">Nenhuma OP encontrada para este filtro.</div>';
           return;
         }
-        box.innerHTML = entries.map((entry) => {
+        box.innerHTML = '<div class="op-summary-list">' + entries.map((entry) => {
           const base = baseMap.get(entry.op) || { total: entry.count, checked: 0, pending: 0 };
           let label = "Qtd.";
           let value = String(entry.count);
@@ -2581,26 +2542,37 @@ let cloudLastHeaderWrite = 0;
             value = String(entry.extra || entry.count);
           }
           return `<div class="op-summary-item"><div class="op-summary-op">OP ${esc(entry.op || "-")}</div><div class="op-summary-info"><span>${label}: <strong>${value}</strong></span>${extraInfo}</div></div>`;
-        }).join("");
+        }).join("") + '</div>';
+        if (cloudReportOpSummarySearch) cloudFilterOpSummaryCards(cloudReportOpSummarySearch);
       }
       function cloudSetDetailFilter(filter) {
         cloudDetailFilter = filter || "all";
         cloudApplyDetailFilterUI();
+        // botões do painel fullscreen da nuvem
+        document.querySelectorAll("#cloudReportDetailFilters .fbtn").forEach((b) => {
+          b.classList.toggle("active", (b.getAttribute("data-filter") || "") === cloudDetailFilter);
+        });
         cloudRenderDetailOpSummary();
         cloudRenderDetailRows();
+        updateCloudReportPanelMetrics();
       }
       function cloudRenderDetailRows() {
         const tbody = document.getElementById("cloudDetailRowsBody"); if (!tbody) return;
         const rows = cloudRowsByDetailFilter(true);
+        const counter = document.getElementById("cloudReportDetailResultCount");
+        if (counter) counter.textContent = `${rows.length} ${rows.length === 1 ? "item" : "itens"}`;
         const limited = rows.slice(0, 700);
         if (!limited.length) { tbody.innerHTML = '<tr><td colspan="9">Nenhum item encontrado</td></tr>'; return; }
-        tbody.innerHTML = limited.map((r, i) => `<tr><td>${i + 1}</td><td class="cc">${esc(r.code)}</td><td>${esc(r.op)}</td><td>${esc(r.peso)}</td><td>${esc(r.status)}</td><td>${esc(r.time || "")}</td><td>${esc(r.location || "")}</td><td>${esc(r.observation || "")}</td><td>${(r.fotoUrl || r.fotoPath || r.storagePath || r.hasPhoto) ? "📸" : "—"}</td></tr>`).join("");
+        tbody.innerHTML = limited.map((r, i) => `<tr><td>${i + 1}</td><td class="cc">${esc(r.code)}</td><td>${esc(r.op)}</td><td>${esc(r.peso)}</td><td>${esc(r.status)}</td><td>${esc(r.time || "")}</td><td>${esc(r.location || "")}</td><td>${esc(r.observation || "")}</td><td>${r.fotoUrl ? `<a href="${esc(r.fotoUrl)}" target="_blank" rel="noopener">📸</a>` : (r.hasPhoto ? "📸" : "—")}</td></tr>`).join("");
         if (rows.length > 700) tbody.innerHTML += `<tr><td colspan="9">Mostrando 700 de ${rows.length} itens</td></tr>`;
       }
       function cloudCloseConferenceDetail() {
         cloudClearDetailLiveListeners();
+        closeCloudReportPanel();
         document.querySelectorAll(".cloud-inline-detail").forEach((box) => { box.className = "cloud-detail cloud-inline-detail"; box.innerHTML = ""; });
         const box = document.getElementById("cloudDetailBox"); if (box) { box.className = "cloud-detail"; box.innerHTML = ""; }
+        cloudDetailConfId = "";
+        cloudDetailRows = [];
       }
       async function cloudFinishConferenceById(confId) {
         if (!confirm(`Finalizar a conferência ${confId}?`)) return;
@@ -2672,23 +2644,60 @@ let cloudLastHeaderWrite = 0;
       }
       function cloudRenderMergedReport() {
         const box = document.getElementById("cloudDetailBox"); if (!box || !cloudMergedReport) return;
-        const r = cloudMergedReport.resumo || {}; cloudDetailRows = cloudMergedReport.rows || []; cloudDetailFilter = "all"; cloudDetailSearch = ""; cloudDetailConfId = "__merged__";
+        const r = cloudMergedReport.resumo || {};
+        cloudDetailRows = cloudMergedReport.rows || [];
+        cloudDetailFilter = "all";
+        cloudDetailSearch = "";
+        cloudReportOpSummarySearch = "";
+        cloudDetailConfId = "__merged__";
+        const opCount = Array.isArray(cloudMergedReport.opSummary) ? cloudMergedReport.opSummary.length : 0;
+        const pct = (r.percentual != null ? r.percentual : 0) + "%";
         box.className = "cloud-detail show";
-        box.innerHTML = `<div class="cloud-detail-head"><div><div class="cloud-detail-title">${esc(cloudMergedReport.title)}</div><div class="cloud-detail-sub">${esc(cloudMergedReport.subtitle || "")}</div></div><button class="cloud-detail-close" onclick="cloudCloseConferenceDetail()">✕ Fechar</button></div>
-        <div class="cloud-detail-stats">
-          <div class="cloud-detail-stat clickable active" id="cloudDetailStatAll" onclick="cloudSetDetailFilter('all')">Total<strong>${r.total ?? 0}</strong></div>
-          <div class="cloud-detail-stat clickable" id="cloudDetailStatChecked" onclick="cloudSetDetailFilter('checked')">Conferidas<strong>${r.conferidos ?? 0}</strong></div>
-          <div class="cloud-detail-stat clickable" id="cloudDetailStatPending" onclick="cloudSetDetailFilter('pending')">Pendentes<strong>${r.pendentes ?? 0}</strong></div>
-          <div class="cloud-detail-stat clickable" id="cloudDetailStatExtra" onclick="cloudSetDetailFilter('extra')">Não previstas<strong>${r.naoPrevistas ?? 0}</strong></div>
+        box.innerHTML = `<div class="cloud-detail-head"><div><div class="cloud-detail-title">${esc(cloudMergedReport.title)}</div><div class="cloud-detail-sub">${esc(cloudMergedReport.subtitle || "")}</div></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+            <button class="cloud-report-btn" onclick="cloudShowMergedExportModal()">Exportar consolidado</button>
+            <button class="cloud-detail-close" onclick="cloudCloseConferenceDetail()">✕ Fechar</button>
+          </div>
         </div>
-        <div class="cloud-detail-section-title">📦 Resumo por OP</div>
-        <div class="op-summary-list" id="cloudDetailOpSummary" style="max-height:220px;overflow:auto;padding-right:4px"></div>
-        <div class="cloud-detail-toolbar"><div class="cloud-detail-section-title" style="margin:0">📋 Bobinas e leituras</div><button class="cloud-report-btn" onclick="cloudShowMergedExportModal()">Exportar consolidado</button></div>
-        <div class="search-wrap" style="margin-bottom: 8px"><span class="si">🔍</span><input class="search-input" id="cloudDetailSearch" placeholder="Buscar código, OP, status ou observação..." oninput="cloudDetailSearch=this.value; cloudRenderDetailRows(); cloudRenderDetailOpSummary()" /></div>
-        <div class="cloud-detail-scroll" style="margin-top: 8px"><table class="dtbl"><thead><tr><th>#</th><th>Código</th><th>OP</th><th>Peso</th><th>Status</th><th>Hora</th><th>Local</th><th>Obs.</th><th>📸</th></tr></thead><tbody id="cloudDetailRowsBody"></tbody></table></div>`;
-        cloudApplyDetailFilterUI();
-        cloudRenderDetailOpSummary();
-        cloudRenderDetailRows();
+        <div class="cloud-detail-stats">
+          <div class="cloud-detail-stat">Total<strong>${r.total ?? 0}</strong></div>
+          <div class="cloud-detail-stat">Conferidas<strong>${r.conferidos ?? 0}</strong></div>
+          <div class="cloud-detail-stat">Pendentes<strong>${r.pendentes ?? 0}</strong></div>
+          <div class="cloud-detail-stat">Não previstas<strong>${r.naoPrevistas ?? 0}</strong></div>
+        </div>
+        <div class="prog-wrap" style="margin:10px 0 12px"><div class="prog-head"><span>Conferência Geral</span><span class="pct">${esc(String(pct))}</span></div><div class="prog-bar"><div class="prog-fill" style="width:${esc(String(pct))}"></div></div></div>
+        <div class="card-title" style="margin-top:4px">🔎 Detalhes do consolidado</div>
+        <div class="card-sub">Toque em uma opção para abrir em tela cheia com busca, filtros e rolagem própria.</div>
+        <div class="report-actions-grid" style="margin-top:10px">
+          <button type="button" class="report-action-card" onclick="openCloudReportPanel('ops')">
+            <span class="report-action-icon blue">📦</span>
+            <span class="report-action-main">
+              <span class="report-action-title">Resumo por OP's</span>
+              <span class="report-action-desc">Visualizar o progresso de cada OP do consolidado.</span>
+              <span class="report-action-metrics">
+                <span><strong>${opCount}</strong> OP's</span>
+                <span><strong>${r.conferidos ?? 0}</strong>/<strong>${r.total ?? 0}</strong> encontradas</span>
+                <span><strong>${esc(String(pct))}</strong> geral</span>
+              </span>
+            </span>
+            <span class="report-open-pill">Abrir</span>
+          </button>
+          <button type="button" class="report-action-card" onclick="openCloudReportPanel('detail')">
+            <span class="report-action-icon green">📋</span>
+            <span class="report-action-main">
+              <span class="report-action-title">Lista detalhada</span>
+              <span class="report-action-desc">Ver bobina a bobina do consolidado.</span>
+              <span class="report-action-metrics">
+                <span><strong>${(cloudMergedReport.rows || []).length}</strong> itens</span>
+                <span><strong>${r.conferidos ?? 0}</strong> conferidas</span>
+                <span><strong>${r.pendentes ?? 0}</strong> pendentes</span>
+                <span><strong>${r.naoPrevistas ?? 0}</strong> extras</span>
+              </span>
+            </span>
+            <span class="report-open-pill">Abrir</span>
+          </button>
+        </div>`;
+        updateCloudReportPanelMetrics();
       }
       function cloudShowMergedExportModal() { if (!cloudMergedReport) return; cloudShowExportModal("__merged__"); }
       async function cloudDeleteSupabasePhotos(confRef) {
@@ -2710,7 +2719,7 @@ let cloudLastHeaderWrite = 0;
           if (!unique.length) return;
           for (let i = 0; i < unique.length; i += 100) {
             const prefixes = unique.slice(i, i + 100);
-            const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}`, { method: "DELETE", headers: supabaseHeaders({ "Content-Type": "application/json" }), body: JSON.stringify({ prefixes }) });
+            const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}`, { method: "DELETE", headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ prefixes }) });
             if (!res.ok) { const txt = await res.text().catch(() => ""); console.warn("Falha ao excluir arquivos no Supabase:", res.status, txt); }
           }
         } catch (e) { console.warn("Falha ao excluir arquivos no Supabase:", e); }
@@ -2905,46 +2914,10 @@ let cloudLastHeaderWrite = 0;
       function detectSpecialLayout(rows) {
         if (!rows || !rows.length) return null;
         const hdr = rows[0].map(normalizeHeader);
-        // Novo modelo: coluna SETOR (coluna B) + código de barras
-        const idxSetor = hdr.findIndex((h) => h === "SETOR" || h.includes("SETOR"));
-        let idxBarras = hdr.findIndex((h) => h === "BARRAS_ORIGEM" || h.includes("BARRAS") || h.includes("CODIGO") || h.includes("COD_BARRA") || h.includes("EAN") || (h.includes("BARR") && h.includes("ORIG")));
-        if (idxBarras < 0) idxBarras = hdr.findIndex((h) => h.includes("BARR") || h.includes("CODIGO") || h.includes("EAN") || h.includes("BOBINA"));
-        const idxOP = hdr.findIndex((h) => h === "OP" || h.includes("ORDEM"));
-        const idxPeso = hdr.findIndex((h) => h.includes("PESO"));
-        const idxMaterial = hdr.findIndex((h) => h.includes("MATERIAL"));
-        // Se não achar cabeçalho SETOR, mas houver 2+ colunas, assume col B = setor e tenta achar barras
-        if (idxSetor >= 0 || (rows[0].length >= 2 && idxBarras >= 0)) {
-          const setorIdx = idxSetor >= 0 ? idxSetor : 1; // coluna B
-          let barrasIdx = idxBarras;
-          if (barrasIdx < 0) {
-            // fallback: primeira coluna que pareça código, senão col A
-            barrasIdx = 0;
-          }
-          // evita setor e barras iguais
-          if (barrasIdx === setorIdx) {
-            barrasIdx = setorIdx === 0 ? 1 : 0;
-          }
-          return {
-            mode: "setor",
-            hasAll: idxSetor >= 0 && idxBarras >= 0,
-            idx: {
-              BARRAS_ORIGEM: barrasIdx,
-              SETOR: setorIdx,
-              OP: idxOP,
-              PESO: idxPeso >= 0 ? idxPeso : -1,
-              MATERIAL: idxMaterial,
-              ETAPA: -1,
-            },
-          };
-        }
-        // Modelo antigo (compatibilidade): BARRAS_ORIGEM + ETAPA
         const expected = ["BARRAS_ORIGEM", "OP", "TIPO_BOBINA", "ETAPA", "MATERIAL", "DESCRICAO", "SITUACAO_OP", "SITUACAO_RECURSO"];
-        const idx = {}; expected.forEach((col) => (idx[col] = hdr.indexOf(col)));
-        idx.PESO = hdr.findIndex((h) => h.includes("PESO")); if (idx.PESO < 0) idx.PESO = 8;
-        idx.SETOR = hdr.findIndex((h) => h.includes("SETOR"));
-        const hasMain = idx.BARRAS_ORIGEM >= 0 && idx.ETAPA >= 0;
-        const hasAll = expected.every((col) => idx[col] >= 0);
-        return hasMain ? { mode: "etapa", idx, hasAll } : null;
+        const idx = {}; expected.forEach((col) => (idx[col] = hdr.indexOf(col))); idx.PESO = hdr.findIndex((h) => h.includes("PESO")); if (idx.PESO < 0) idx.PESO = 8;
+        const hasMain = idx.BARRAS_ORIGEM >= 0 && idx.ETAPA >= 0; const hasAll = expected.every((col) => idx[col] >= 0);
+        return hasMain ? { idx, hasAll } : null;
       }
       function importRowsComplete(rows, { replaceExisting = true } = {}) {
         if (!rows || !rows.length) return 0;
@@ -2962,18 +2935,12 @@ let cloudLastHeaderWrite = 0;
         const nextMeta = {};
         const codes = [];
         if (special) {
-          const bIdx = special.idx.BARRAS_ORIGEM, opIdx = special.idx.OP, eIdx = special.idx.ETAPA, mIdx = special.idx.MATERIAL, pIdx = special.idx.PESO, sIdx = special.idx.SETOR;
+          const bIdx = special.idx.BARRAS_ORIGEM, opIdx = special.idx.OP, eIdx = special.idx.ETAPA, mIdx = special.idx.MATERIAL, pIdx = special.idx.PESO;
           rows.slice(1).forEach((r) => {
             const code = String(r[bIdx] || "").trim();
             if (!code) return;
             codes.push(code);
-            nextMeta[code] = {
-              op: opIdx >= 0 ? String(r[opIdx] || "").trim() : "",
-              etapa: eIdx >= 0 ? String(r[eIdx] || "").trim() : "",
-              setor: sIdx >= 0 ? String(r[sIdx] || "").trim() : "",
-              material: mIdx >= 0 ? String(r[mIdx] || "").trim() : "",
-              peso: pIdx >= 0 ? String(r[pIdx] || "").trim() : "",
-            };
+            nextMeta[code] = { op: String(r[opIdx] || "").trim(), etapa: String(r[eIdx] || "").trim(), material: String(r[mIdx] || "").trim(), peso: String(r[pIdx] || "").trim() };
           });
         } else if (maxC <= 1) {
           rows.forEach((r) => { const code = String(r[0] || "").trim(); if (code) codes.push(code); });
@@ -3052,9 +3019,7 @@ let cloudLastHeaderWrite = 0;
       }
       function showConferenceTypeModal(layout, mode = "import") {
         confTypeModalMode = mode;
-        const msg = layout && layout.mode === "setor"
-          ? (layout.hasAll ? "Modelo detectado: código de barras + SETOR." : "Planilha com coluna SETOR (B) detectada.")
-          : (layout && layout.hasAll ? "Modelo detectado: BARRAS_ORIGEM / ETAPA." : "Colunas BARRAS_ORIGEM e ETAPA detectadas.");
+        const msg = layout && layout.hasAll ? "Modelo detectado: BARRAS_ORIGEM / ETAPA." : "Colunas BARRAS_ORIGEM e ETAPA detectadas.";
         if (mode === "import") notify(msg);
         document.getElementById("confTypeModal").classList.add("show");
       }
@@ -3073,46 +3038,7 @@ let cloudLastHeaderWrite = 0;
         showConferenceTypeModal(S.fileLayout, "change");
       }
       function conferenceTypeConfigs() {
-        // Novo filtro por SETOR (coluna B)
-        return {
-          bases: {
-            label: "Bases",
-            // une o que antes era Bases-Todas + Bases-Películas
-            setorTerms: ["IMPRESSAO", "IMPRESSÃO"],
-          },
-          capas: {
-            label: "Capas",
-            setorTerms: ["LAMINACAO", "LAMINAÇÃO"],
-          },
-          refiladeira: {
-            label: "Refiladeira",
-            setorTerms: ["REFILADEIRA"],
-          },
-          corte_solda: {
-            label: "Corte e solda",
-            setorTerms: ["CORTE E SOLDA", "CORTE_E_SOLDA", "CORTE&SOLDA", "C&S", "CS"],
-          },
-        };
-      }
-      function normalizeSetorValue(v) {
-        return String(v || "")
-          .trim()
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .toUpperCase()
-          .replace(/\s+/g, " ")
-          .replace(/[_-]+/g, " ")
-          .trim();
-      }
-      function setorMatches(setorRaw, terms = []) {
-        const setor = normalizeSetorValue(setorRaw);
-        if (!setor) return false;
-        return (terms || []).some((t) => {
-          const term = normalizeSetorValue(t);
-          if (!term) return false;
-          // match exato ou contém (para variações como "IMPRESSAO FLEXO")
-          return setor === term || setor.includes(term) || term.includes(setor);
-        });
+        return { bases_todas: { label: "Bases - Todas", etapas: [20] }, bases_peliculas: { label: "Bases - Películas", etapas: [20], materialTerms: ["BOPP", "PP", "PET"] }, capas: { label: "Capas", etapas: [30, 31] }, refiladeira: { label: "Refiladeira", etapas: [40, 41, 42, 43, 44, 45, 46, 47] }, cs: { label: "C&S", etapas: [50, 51, 52, 53, 54, 55] } };
       }
       function setAllConferenceChecks(v) { document.querySelectorAll(".conf-check").forEach((c) => (c.checked = v)); }
       function importSelectedConferenceTypes() {
@@ -3142,59 +3068,17 @@ let cloudLastHeaderWrite = 0;
           resetConferenceData({ keepImportedFile: true });
         }
         const nextMeta = {};
-        const bIdx = S.fileLayout.idx.BARRAS_ORIGEM;
-        const eIdx = S.fileLayout.idx.ETAPA;
-        const mIdx = S.fileLayout.idx.MATERIAL;
-        const opIdx = S.fileLayout.idx.OP;
-        const pIdx = S.fileLayout.idx.PESO;
-        const sIdx = S.fileLayout.idx.SETOR;
-        const mode = S.fileLayout.mode || (sIdx >= 0 ? "setor" : "etapa");
-        const rows = S.fileData.slice(1);
-        const codes = [];
-        let matched = 0;
+        const bIdx = S.fileLayout.idx.BARRAS_ORIGEM, eIdx = S.fileLayout.idx.ETAPA, mIdx = S.fileLayout.idx.MATERIAL, opIdx = S.fileLayout.idx.OP, pIdx = S.fileLayout.idx.PESO;
+        const rows = S.fileData.slice(1); const codes = []; let matched = 0;
         rows.forEach((r) => {
-          let ok = false;
-          if (mode === "setor" || (sIdx >= 0 && cfgList.some((c) => c.setorTerms && c.setorTerms.length))) {
-            const setorTxt = sIdx >= 0 ? String(r[sIdx] || "").trim() : "";
-            ok = cfgList.some((cfg) => setorMatches(setorTxt, cfg.setorTerms || []));
-          } else {
-            // fallback legado por ETAPA
-            const etapaTxt = eIdx >= 0 ? String(r[eIdx] || "").trim() : "";
-            const m = etapaTxt.match(/\d+/);
-            const etapa = m ? parseInt(m[0], 10) : NaN;
-            const material = mIdx >= 0 ? String(r[mIdx] || "").toUpperCase() : "";
-            ok = cfgList.some((cfg) => {
-              const etapas = new Set((cfg.etapas || []).map(Number));
-              if (etapas.size && !etapas.has(etapa)) return false;
-              const terms = (cfg.materialTerms || []).map((t) => String(t).toUpperCase());
-              return !terms.length || terms.some((t) => material.includes(t));
-            });
-          }
-          if (!ok) return;
-          matched++;
-          const code = String(r[bIdx] || "").trim();
-          if (!code) return;
-          codes.push(code);
-          nextMeta[code] = {
-            op: opIdx >= 0 ? String(r[opIdx] || "").trim() : "",
-            etapa: eIdx >= 0 ? String(r[eIdx] || "").trim() : "",
-            setor: sIdx >= 0 ? String(r[sIdx] || "").trim() : "",
-            material: mIdx >= 0 ? String(r[mIdx] || "").trim() : "",
-            peso: pIdx >= 0 ? String(r[pIdx] || "").trim() : "",
-          };
+          const etapaTxt = String(r[eIdx] || "").trim(); const m = etapaTxt.match(/\d+/); const etapa = m ? parseInt(m[0], 10) : NaN; const material = String(r[mIdx] || "").toUpperCase();
+          const ok = cfgList.some((cfg) => { const etapas = new Set(cfg.etapas.map(Number)); if (!etapas.has(etapa)) return false; const terms = (cfg.materialTerms || []).map((t) => String(t).toUpperCase()); return !terms.length || terms.some((t) => material.includes(t)); });
+          if (!ok) return; matched++; const code = String(r[bIdx] || "").trim(); if (code) { codes.push(code); nextMeta[code] = { op: String(r[opIdx] || "").trim(), etapa: String(r[eIdx] || "").trim(), material: String(r[mIdx] || "").trim(), peso: String(r[pIdx] || "").trim() }; }
         });
-        const uniq = [...new Set(codes)];
-        const labels = cfgList.map((c) => c.label).join(", ");
-        if (!uniq.length) { notify(`Nenhum código encontrado para: ${labels}.`, "warning"); return; }
+        const uniq = [...new Set(codes)]; const labels = cfgList.map((c) => c.label).join(", "); if (!uniq.length) { notify(`Nenhum código encontrado para: ${labels}.`, "warning"); return; }
         S.meta = replaceExisting ? nextMeta : { ...S.meta, ...nextMeta };
         S.db = replaceExisting ? uniq : [...new Set([...S.db, ...uniq])];
-        S.confType = labels;
-        save();
-        syncCurrentConferenceToCloud();
-        updateDBUI();
-        closeConferenceTypeModal();
-        updateImportActionButtons();
-        notify(`✅ ${uniq.length} códigos únicos importados de ${matched} linhas filtradas. Duplicados foram ignorados.`);
+        S.confType = labels; save(); syncCurrentConferenceToCloud(); updateDBUI(); closeConferenceTypeModal(); updateImportActionButtons(); notify(`✅ ${uniq.length} códigos únicos importados de ${matched} linhas filtradas. Duplicados foram ignorados.`);
       }
       function previewCol() {
         const ci = parseInt(document.getElementById("colSelect").value); const hh = document.getElementById("hasHeader").checked; const rows = S.fileData || [], box = document.getElementById("previewBox"); if (!rows.length) return;
@@ -3848,6 +3732,119 @@ if (S.collectorMode) {
         if (reportPanelMode === "ops") { reportOpSummarySearch = v; renderOpSummary(v); }
         else rptSearch(v);
       }
+
+      function updateCloudReportPanelMetrics() {
+        const rows = cloudDetailRows || [];
+        const total = rows.filter((r) => !String(r.status || "").includes("Não Prevista")).length;
+        const checked = rows.filter((r) => String(r.status || "").includes("Conferid") || String(r.status || "").includes("Manual")).length;
+        const pending = rows.filter((r) => String(r.status || "").includes("Pendente")).length;
+        const extras = rows.filter((r) => String(r.status || "").includes("Não Prevista")).length;
+        const ops = new Set(rows.filter((r) => !String(r.status || "").includes("Não Prevista")).map((r) => r.op || "-"));
+        const pct = total > 0 ? ((checked / total) * 100).toFixed(1) + "%" : "0.0%";
+        const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+        set("cloudReportPanelOpsCount", ops.size);
+        set("cloudReportPanelOpsFound", checked);
+        set("cloudReportPanelOpsPending", pending);
+        set("cloudReportPanelOpsPct", pct);
+        set("cloudCardOpCount", ops.size);
+        set("cloudCardOpFound", checked);
+        set("cloudCardOpTotal", total);
+        set("cloudCardOpPct", pct);
+        set("cloudCardDetailCount", rows.length);
+        set("cloudCardDetailChecked", checked);
+        set("cloudCardDetailPending", pending);
+        set("cloudCardDetailExtra", extras);
+        const detailCount = document.getElementById("cloudReportDetailResultCount");
+        if (detailCount) {
+          const filtered = typeof cloudRowsByDetailFilter === "function" ? cloudRowsByDetailFilter(true) : rows;
+          detailCount.textContent = `${filtered.length} ${filtered.length === 1 ? "item" : "itens"}`;
+        }
+      }
+      function openCloudReportPanel(mode) {
+        if (!cloudDetailConfId || !(cloudDetailRows || []).length) {
+          notify("Abra uma conferência primeiro.", "warning");
+          return;
+        }
+        const panel = document.getElementById("cloudReportFullscreen");
+        if (!panel) return;
+        // fecha painel local do relatório se estiver aberto
+        try { closeReportPanel(); } catch (e) {}
+        panel.classList.add("show");
+        panel.setAttribute("aria-hidden", "false");
+        document.body.classList.add("report-panel-open");
+        setCloudReportPanelMode(mode || cloudReportPanelMode || "ops");
+      }
+      function closeCloudReportPanel() {
+        const panel = document.getElementById("cloudReportFullscreen");
+        if (!panel) return;
+        panel.classList.remove("show");
+        panel.setAttribute("aria-hidden", "true");
+        // só remove a trava de scroll se o outro painel também não estiver aberto
+        if (!document.getElementById("reportFullscreen")?.classList.contains("show")) {
+          document.body.classList.remove("report-panel-open");
+        }
+      }
+      function setCloudReportPanelMode(mode) {
+        cloudReportPanelMode = mode === "detail" ? "detail" : "ops";
+        const isOps = cloudReportPanelMode === "ops";
+        document.getElementById("cloudReportOpsView")?.classList.toggle("active", isOps);
+        document.getElementById("cloudReportDetailView")?.classList.toggle("active", !isOps);
+        document.getElementById("cloudReportModeOps")?.classList.toggle("active", isOps);
+        document.getElementById("cloudReportModeDetail")?.classList.toggle("active", !isOps);
+        const filters = document.getElementById("cloudReportDetailFilters");
+        if (filters) filters.style.display = isOps ? "none" : "flex";
+        const title = document.getElementById("cloudReportPanelTitle");
+        if (title) title.textContent = isOps ? "📦 Resumo por OP's" : "📋 Lista detalhada";
+        const sub = document.getElementById("cloudReportPanelSub");
+        if (sub) sub.textContent = isOps
+          ? "Progresso por OP em tela cheia, com busca e rolagem própria."
+          : "Bobina a bobina em tela cheia, com filtros, busca, local, observação e fotos.";
+        const search = document.getElementById("cloudReportFullscreenSearch");
+        if (search) {
+          search.placeholder = isOps ? "Buscar OP..." : "Buscar código, OP, status, local...";
+          search.value = isOps ? (cloudReportOpSummarySearch || "") : (cloudDetailSearch || "");
+        }
+        // sincroniza chips de filtro da lista
+        document.querySelectorAll("#cloudReportDetailFilters .fbtn").forEach((b) => {
+          b.classList.toggle("active", (b.getAttribute("data-filter") || "") === (cloudDetailFilter || "all"));
+        });
+        updateCloudReportPanelMetrics();
+        if (isOps) {
+          // no modo OP, a busca filtra OPs (não a lista de bobinas)
+          const prevSearch = cloudDetailSearch;
+          cloudDetailSearch = ""; // não aplica busca de bobina no resumo base
+          cloudRenderDetailOpSummary();
+          // se houver busca de OP, filtra visualmente os cards
+          if (cloudReportOpSummarySearch) cloudFilterOpSummaryCards(cloudReportOpSummarySearch);
+          cloudDetailSearch = prevSearch;
+        } else {
+          cloudRenderDetailRows();
+        }
+      }
+      function cloudFilterOpSummaryCards(q) {
+        const box = document.getElementById("cloudDetailOpSummary");
+        if (!box) return;
+        const query = String(q || "").trim().toLowerCase();
+        box.querySelectorAll(".op-summary-item").forEach((el) => {
+          const txt = (el.textContent || "").toLowerCase();
+          el.style.display = !query || txt.includes(query) ? "" : "none";
+        });
+      }
+      function cloudReportPanelSearch(v) {
+        if (cloudReportPanelMode === "ops") {
+          cloudReportOpSummarySearch = v || "";
+          // re-render resumo e aplica filtro de OP
+          const prev = cloudDetailSearch;
+          cloudDetailSearch = "";
+          cloudRenderDetailOpSummary();
+          cloudDetailSearch = prev;
+          cloudFilterOpSummaryCards(cloudReportOpSummarySearch);
+        } else {
+          cloudDetailSearch = v || "";
+          cloudRenderDetailRows();
+          cloudRenderDetailOpSummary();
+        }
+      }
       function exportRpt(fmt) {
         const items = getReportItems().map((i) => ({ code: i.code, op: i.op || "-", peso: i.peso || "-", status: i.status === "checked" ? (i.manual ? "Conferido Manual" : "Conferido") : i.status === "pending" ? "Pendente" : "Não Prevista", time: i.time === "-" ? "" : i.time, location: i.location === "-" ? "" : i.location, observation: i.observation || "", hasPhoto: i.hasPhoto }));
         const total = S.db.length, chk = S.checked.size, pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0, date = new Date(), tipo = S.confType || "-", conferente = S.checkerName || "-", extras = [...new Set(S.extras)].length, opSummary = getOpSummaryItems();
@@ -3875,7 +3872,12 @@ if (S.collectorMode) {
           for (const code of extrasUniq) {
             const scan = S.scanned.find((s) => s.code === code && s.status === "not-found"); const loc = scan?.location || ""; const time = scan?.time || ""; const obs = scan?.observation || "";
             let fotoName = ""; const photo = getPhoto(code); const base = photo && photo.includes(",") ? photo.split(",")[1] : null;
-            if (base) { fotosFolder.file(`${code}_etiqueta_bobina.jpg`, base, { base64: true }); fotoName = `fotos/${code}_etiqueta_bobina.jpg`; countFotos++; }
+            if (base) {
+              const fname = (typeof photoFileName === "function") ? photoFileName(code, loc) : `${code}_etiqueta_bobina.jpg`;
+              fotosFolder.file(fname, base, { base64: true });
+              fotoName = `fotos/${fname}`;
+              countFotos++;
+            }
             csv += `${code};${time};${loc};${obs};${fotoName}\n`;
           }
           const total = S.db.length, chk = S.checked.size, pct = total > 0 ? ((chk / total) * 100).toFixed(1) : 0;
@@ -3995,18 +3997,72 @@ if (S.collectorMode) {
       }
       function loadImgData(src) { return new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = reject; img.src = src; }); }
       function drawContain(ctx, img, x, y, w, h) { const r = Math.min(w / img.width, h / img.height), nw = img.width * r, nh = img.height * r; ctx.drawImage(img, x + (w - nw) / 2, y + (h - nh) / 2, nw, nh); }
-      async function combinePhotosHalf(code, photoEtiqueta, photoBobina) {
-        const [etq, bob] = await Promise.all([loadImgData(photoEtiqueta), loadImgData(photoBobina)]); const maxW = 900; const labelH = 44;
+      function fitCanvasText(ctx, text, maxWidth) {
+        let t = String(text || "");
+        if (!t) return "";
+        if (ctx.measureText(t).width <= maxWidth) return t;
+        while (t.length > 1 && ctx.measureText(t + "...").width > maxWidth) t = t.slice(0, -1);
+        return t + "...";
+      }
+      function safeFilePart(v, fallback = "sem_local") {
+        const s = String(v || "")
+          .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-zA-Z0-9]+/g, "_")
+          .replace(/^_+|_+$/g, "")
+          .slice(0, 40);
+        return s || fallback;
+      }
+      function photoFileName(code, location = "") {
+        const c = safeFilePart(code, "sem_codigo");
+        const loc = safeFilePart(location, "");
+        return loc ? `${c}__${loc}_etiqueta_bobina.jpg` : `${c}_etiqueta_bobina.jpg`;
+      }
+      async function combinePhotosHalf(code, photoEtiqueta, photoBobina, location = "") {
+        const [etq, bob] = await Promise.all([loadImgData(photoEtiqueta), loadImgData(photoBobina)]);
+        const maxW = 900;
+        const labelH = 48;
+        // Endereço SOMENTE embaixo, em área extra (não cobre as fotos)
+        const footerH = location ? 120 : 0;
         const etqRatio = Math.min(maxW / etq.width, 1), bobRatio = Math.min(maxW / bob.width, 1);
         const etqH = Math.round(etq.height * etqRatio), bobH = Math.round(bob.height * bobRatio);
-        const canvas = document.createElement("canvas"); canvas.width = maxW; canvas.height = labelH + etqH + labelH + bobH; const ctx = canvas.getContext("2d");
-        ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height); drawContain(ctx, etq, 0, labelH, maxW, etqH); drawContain(ctx, bob, 0, labelH + etqH + labelH, maxW, bobH); ctx.fillStyle = "rgba(0,0,0,.75)"; ctx.fillRect(0, 0, maxW, labelH); ctx.fillRect(0, labelH + etqH, maxW, labelH); ctx.fillStyle = "#fff"; ctx.font = "bold 22px Arial"; ctx.fillText("ETIQUETA • " + code, 16, 28); ctx.fillText("BOBINA • " + code, 16, labelH + etqH + 28);
-        return canvas.toDataURL("image/jpeg", 0.72);
+        const canvas = document.createElement("canvas");
+        canvas.width = maxW;
+        canvas.height = labelH + etqH + labelH + bobH + footerH;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // fotos intactas
+        drawContain(ctx, etq, 0, labelH, maxW, etqH);
+        drawContain(ctx, bob, 0, labelH + etqH + labelH, maxW, bobH);
+        // faixas de título (só código, sem endereço por cima da foto)
+        ctx.fillStyle = "rgba(0,0,0,.78)";
+        ctx.fillRect(0, 0, maxW, labelH);
+        ctx.fillRect(0, labelH + etqH, maxW, labelH);
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 24px Arial";
+        ctx.fillText(fitCanvasText(ctx, "ETIQUETA • " + code, maxW - 32), 16, 32);
+        ctx.fillText(fitCanvasText(ctx, "BOBINA • " + code, maxW - 32), 16, labelH + etqH + 32);
+        // endereço GRANDE só no rodapé, abaixo das fotos
+        if (location) {
+          const y0 = labelH + etqH + labelH + bobH;
+          ctx.fillStyle = "rgba(185, 28, 28, 0.96)";
+          ctx.fillRect(0, y0, maxW, footerH);
+          ctx.fillStyle = "#fecaca";
+          ctx.font = "bold 22px Arial";
+          ctx.fillText("LOCAL / ENDERECO", 18, y0 + 30);
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "bold 42px Arial";
+          ctx.fillText(fitCanvasText(ctx, String(location), maxW - 36), 18, y0 + 78);
+          ctx.fillStyle = "#fee2e2";
+          ctx.font = "bold 22px Arial";
+          ctx.fillText(fitCanvasText(ctx, "Codigo: " + code, maxW - 36), 18, y0 + 108);
+        }
+        return canvas.toDataURL("image/jpeg", 0.78);
       }
-      async function savePhotosExtra(code, photoEtiqueta, photoBobina) {
+      async function savePhotosExtra(code, photoEtiqueta, photoBobina, location = "") {
         const key = String(code || "");
         try {
-          const combined = await combinePhotosHalf(key, photoEtiqueta, photoBobina);
+          const combined = await combinePhotosHalf(key, photoEtiqueta, photoBobina, location);
           photoMemoryCache[key] = combined;
           const savedIndexed = await photoStoreSet(key, combined);
           let savedLocal = false;
@@ -4174,12 +4230,12 @@ if (S.collectorMode) {
         if (!camCurrentPhotoBobina) { document.getElementById("camPhotoErrorBobina").style.display = "block"; hasError = true; } else document.getElementById("camPhotoErrorBobina").style.display = "none";
         if (hasError) { camVibrate("notfound"); return; }
         if (camManualMode === "manualFound" && camManualSelectedCode) {
-          const code = camManualSelectedCode, time = new Date().toLocaleTimeString("pt-BR"), savedPhoto = await savePhotosExtra(code, camCurrentPhotoEtiqueta, camCurrentPhotoBobina);
+          const code = camManualSelectedCode, time = new Date().toLocaleTimeString("pt-BR"), savedPhoto = await savePhotosExtra(code, camCurrentPhotoEtiqueta, camCurrentPhotoBobina, loc);
           S.checked.add(code); S.scanned.unshift({ code, time, status: "found", manual: true, location: loc, observation: obs, hasPhoto: savedPhoto, hasPhotoEtiqueta: savedPhoto, hasPhotoBobina: savedPhoto });
           if (!savedPhoto) notify("Foto não foi salva. Não vai sair no exportador.", "warning");
           camShowResult("green", `📸 MANUAL — "${code}"`); save(); cloudSyncReading(S.scanned[0]); camUpdateCounters(); camUpdateHistory(); updateStats(); updateHistory(); updateDBUI(); camManualSelectedCode = null;
         } else if (camPendingExtra) {
-          const savedPhoto = await savePhotosExtra(camPendingExtra.code, camCurrentPhotoEtiqueta, camCurrentPhotoBobina);
+          const savedPhoto = await savePhotosExtra(camPendingExtra.code, camCurrentPhotoEtiqueta, camCurrentPhotoBobina, loc);
           S.extras.push(camPendingExtra.code); S.scanned.unshift({ code: camPendingExtra.code, time: camPendingExtra.time, status: "not-found", location: loc, observation: obs, hasPhoto: savedPhoto, hasPhotoEtiqueta: savedPhoto, hasPhotoBobina: savedPhoto });
           if (!savedPhoto) notify("Foto não foi salva. Não vai sair no exportador.", "warning");
           camShowResult("red", `⚠️ "${camPendingExtra.code}" — 📌 ${loc} 🏷️`); save(); cloudSyncReading(S.scanned[0]); camUpdateCounters(); camUpdateHistory(); updateStats(); updateHistory(); updateDBUI(); camPendingExtra = null;
@@ -4294,7 +4350,7 @@ if (S.collectorMode) {
         if (pendingExtraMain) {
           let savedPhoto = false;
           if (requirePhotos) {
-            savedPhoto = await savePhotosExtra(pendingExtraMain.code, pendingExtraMainPhotoEtiqueta, pendingExtraMainPhotoBobina);
+            savedPhoto = await savePhotosExtra(pendingExtraMain.code, pendingExtraMainPhotoEtiqueta, pendingExtraMainPhotoBobina, loc);
             if (!savedPhoto) notify("Foto não foi salva. Não vai sair no exportador.", "warning");
           }
           const scanItem = { code: pendingExtraMain.code, time: pendingExtraMain.time, status: "not-found", location: loc, observation: obs, hasPhoto: savedPhoto, source: pendingExtraMain.source || "manual" };
@@ -4332,15 +4388,7 @@ if (S.collectorMode) {
   if (S.collectorMode) {
     setCollectorLastRead("Coletor ativado.");
   }
-  if (!cloudIsConfigured()) {
-    cloudSetStatus("", "☁️ Nuvem: local");
-  } else if (!factoryGateUnlocked()) {
-    cloudSetStatus("error", "☁️ Informe o código da fábrica");
-    setTimeout(() => showFactoryGateModal(), 250);
-  } else {
-    cloudSetStatus("ok", "☁️ Modo econômico");
-    cloudInit().catch(() => {});
-  }
+  cloudSetStatus(cloudIsConfigured() ? "ok" : "", cloudIsConfigured() ? "☁️ Modo econômico" : "☁️ Nuvem: local");
 }
 
 // Flush ao trocar de aba ou fechar (mobile e desktop)
@@ -4351,10 +4399,11 @@ window.addEventListener("beforeunload", () => {
   try { cloudFlushBuffer(); } catch (e) {}
 });
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && document.getElementById("reportFullscreen")?.classList.contains("show")) closeReportPanel();
+  if (e.key === "Escape" && document.getElementById("cloudReportFullscreen")?.classList.contains("show")) closeCloudReportPanel();
+  else if (e.key === "Escape" && document.getElementById("reportFullscreen")?.classList.contains("show")) closeReportPanel();
 });
 
 init();
     </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a17ebd9199c4f521',t:'MTc4MzUxMDA1NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a180e007b82c9872',t:'MTc4MzUzMjQzNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1eb9d390d0ee033',t:'MTc4NDY1MTY3Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2241a596d04a9e4',t:'MTc4NTI0NDAwNQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
